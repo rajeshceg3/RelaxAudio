@@ -7,9 +7,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <button id="playButton">Play</button>
-    <div id="playingIndicator" class="hidden">Playing...</div>
-    <audio id="audioPlayer" loop src="ambient.mp3"></audio>
+    <div id="sound-selection-container">
+        <button data-sound="rain" aria-label="Play Rain sound">Rain</button>
+        <button data-sound="ocean" aria-label="Play Ocean Waves sound">Ocean Waves</button>
+        <button data-sound="wind" aria-label="Play Wind sound">Wind</button>
+    </div>
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" aria-label="Volume control" aria-valuemin="0" aria-valuemax="100">
+    <div id="playbackStatus"></div>
+    <audio id="audioPlayer" loop src="rain.mp3"></audio> <!-- Should be rain.mp3 now, though unused -->
     <script src="script.js"></script>
 </body>
 </html>
