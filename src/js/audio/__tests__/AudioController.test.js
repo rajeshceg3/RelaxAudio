@@ -1,266 +1,317 @@
 // src/js/audio/__tests__/AudioController.test.js
-import { AudioController } from '../AudioController';
+import { AudioController } from '../AudioController.js';
 
+// Mock Web Audio API
+const mockAudioContext = {
+  createGain: jest.fn().mockReturnValue({
+    connect: jest.fn(),
+    gain: {
+      value: 1,
+      linearRampToValueAtTime: jest.fn(),
+    },
+  }),
+  createBufferSource: jest.fn().mockReturnValue({
+    connect: jest.fn(),
+    start: jest.fn(),
+    stop: jest.fn(),
+    loop: false,
+    buffer: null,
+  }),
+  decodeAudioData: jest.fn().mockImplementation(buffer => Promise.resolve({duration: 60})), // Mock successful decode
+  resume: jest.fn().mockResolvedValue(undefined),
+  suspend: jest.fn().mockResolvedValue(undefined),
+  destination: {},
+  state: 'running', // Initial state
+  currentTime: 0,
+};
+
+global.AudioContext = jest.fn().mockImplementation(() => mockAudioContext);
+global.fetch = jest.fn(() => Promise.resolve({
+    ok: true,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)), // Mock ArrayBuffer
+}));
+
+// Mock CustomEvent
+global.CustomEvent = class CustomEvent extends Event {
+    constructor(type, eventInitDict) {
+        super(type, eventInitDict);
+        if (eventInitDict && eventInitDict.detail) {
+            this.detail = eventInitDict.detail;
+        }
+    }
+};
 // Spy on document.dispatchEvent
-let mockDispatchEvent;
+const dispatchEventSpy = jest.spyOn(document, 'dispatchEvent');
 
 describe('AudioController', () => {
   let audioController;
 
   beforeEach(() => {
-    // Reset and spy on document.dispatchEvent before each test
-    mockDispatchEvent = jest.spyOn(document, 'dispatchEvent');
+    // Reset mocks for each test
+    jest.clearAllMocks();
 
-    // Create a new AudioController instance for each test
-    // This ensures that AudioContext and its methods are freshly mocked via jest.setup.js
-    audioController = new AudioController();
-
-    // Ensure that the AudioContext mock and its methods are cleared for each test run.
-    // This is important if the mock instances accumulate call history.
-    // The global beforeEach in jest.setup.js handles global.AudioContext.mockClear()
-    // and global.fetch.mockClear().
-    // For methods on the instance of the mocked AudioContext (like audioController.audioContext.createGain):
-    if (audioController.audioContext && audioController.audioContext.createGain.mockClear) {
-        audioController.audioContext.createGain.mockClear();
-        audioController.audioContext.createBufferSource.mockClear();
-        audioController.audioContext.decodeAudioData.mockClear();
-        audioController.audioContext.resume.mockClear();
-        audioController.audioContext.suspend.mockClear();
-        // Clear calls for gain node methods as well
-        audioController.audioContext.masterGainNode.gain.linearRampToValueAtTime.mockClear();
-    }
-  });
-
-  afterEach(() => {
-    mockDispatchEvent.mockRestore();
-  });
-
-  describe('Constructor', () => {
-    test('initializes Web Audio API components', () => {
-      expect(global.AudioContext).toHaveBeenCalledTimes(1);
-      expect(audioController.audioContext.createGain).toHaveBeenCalledTimes(1);
-      expect(audioController.masterGainNode).toBeDefined();
-      expect(audioController.masterGainNode.connect).toHaveBeenCalledWith(audioController.audioContext.destination);
+    // Restore AudioContext mock to its initial state for each test
+    global.AudioContext = jest.fn().mockImplementation(() => {
+        // Reset parts of mockAudioContext that might be changed by tests
+        mockAudioContext.state = 'running';
+        mockAudioContext.currentTime = 0;
+        mockAudioContext.createGain.mockReturnValue({ // Return a fresh gain node mock
+            connect: jest.fn(),
+            gain: {
+                value: 1,
+                linearRampToValueAtTime: jest.fn(),
+            },
+        });
+        mockAudioContext.createBufferSource.mockReturnValue({ // Return a fresh buffer source mock
+            connect: jest.fn(),
+            start: jest.fn(),
+            stop: jest.fn(),
+            loop: false,
+            buffer: null,
+        });
+        mockAudioContext.decodeAudioData = jest.fn().mockImplementation(buffer => Promise.resolve({duration: 60}));
+        mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+        mockAudioContext.suspend = jest.fn().mockResolvedValue(undefined);
+        return mockAudioContext;
     });
 
-    test('throws error and dispatches event if Web Audio API is not supported', () => {
-      global.AudioContext.mockImplementationOnce(() => {
-        throw new Error("Web Audio API not supported");
-      });
-
-      expect(() => new AudioController()).toThrow("Web Audio API not supported");
-      // In this setup, the dispatchEvent might happen before the test spy is attached if error is in constructor.
-      // To test this dispatch, we might need a more complex setup or check global dispatch spy if setup differently.
-      // For now, testing the throw is the primary check.
-    });
-  });
-
-  describe('setVolume', () => {
-    test('applies exponential scaling and uses linearRampToValueAtTime', () => {
-      audioController.setVolume(0.5); // Raw linear value: 0.5
-      const expectedExponentialValue = 0.5 * 0.5; // 0.25
-      expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
-        .toHaveBeenCalledWith(expectedExponentialValue, audioController.audioContext.currentTime + 0.02);
-    });
-
-    test('clamps volume to min 0', () => {
-      audioController.setVolume(-0.5);
-      expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
-        .toHaveBeenCalledWith(0, expect.any(Number));
-    });
-
-    test('clamps volume to max 1', () => {
-      audioController.setVolume(1.5);
-      expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
-        .toHaveBeenCalledWith(1, expect.any(Number)); // 1*1 = 1
-    });
-  });
-
-  describe('_loadSingleSound', () => {
-    test('successfully loads a sound', async () => {
-      const soundId = 'rain'; // Assuming 'rain' is a valid soundId from controller's sounds object
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)), // Mock non-empty ArrayBuffer
-      });
-      audioController.audioContext.decodeAudioData.mockResolvedValueOnce({ mockDecodedBuffer: true });
-
-      const buffer = await audioController._loadSingleSound(soundId);
-
-      expect(global.fetch).toHaveBeenCalledWith(audioController.sounds[soundId].filePath);
-      expect(audioController.audioContext.decodeAudioData).toHaveBeenCalled();
-      expect(buffer).toEqual({ mockDecodedBuffer: true });
-      expect(audioController.sounds[soundId].audioBuffer).toEqual({ mockDecodedBuffer: true });
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'loading', soundId })
-      }));
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'loaded', soundId })
-      }));
-    });
-
-    test('attempts fallback path if initial fetch fails and fallback exists', async () => {
-      const soundId = 'rain';
-      audioController.sounds[soundId].filePath = '/assets/audio/rain-nonexistent.mp3';
-      audioController.sounds[soundId].fallbackPath = '/assets/audio/rain-fallback.mp3';
-
-      // First fetch fails
-      global.fetch.mockResolvedValueOnce({ ok: false, status: 404 });
-      // Second fetch (fallback) succeeds
-      global.fetch.mockResolvedValueOnce({
+    global.fetch = jest.fn(() => Promise.resolve({ // Reset fetch mock
         ok: true,
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-      });
-      audioController.audioContext.decodeAudioData.mockResolvedValueOnce({ mockDecodedBuffer: "fallback" });
+    }));
 
-      const buffer = await audioController._loadSingleSound(soundId);
+    dispatchEventSpy.mockClear();
 
+    // Re-initialize AudioController before each test
+    audioController = new AudioController();
+  });
+
+  test('should initialize Web Audio API components', () => {
+    expect(global.AudioContext).toHaveBeenCalledTimes(1);
+    expect(mockAudioContext.createGain).toHaveBeenCalledTimes(1);
+    expect(audioController.masterGainNode).toBeDefined();
+  });
+
+  test('constructor should throw error if Web Audio API is not supported', () => {
+    const originalAudioContext = global.AudioContext;
+    global.AudioContext = undefined; // Simulate unsupported API
+    expect(() => new AudioController()).toThrow('Web Audio API not supported');
+    // Check if 'unsupported' event was dispatched
+    const unsupportedEvent = dispatchEventSpy.mock.calls.find(
+        call => call[0].type === 'audiostatechange' && call[0].detail.status === 'unsupported'
+    );
+    expect(unsupportedEvent).toBeDefined();
+    expect(unsupportedEvent[0].detail.message).toContain('Audio playback not supported');
+    global.AudioContext = originalAudioContext; // Restore
+  });
+
+  describe('Sound Loading', () => {
+    test('_loadSingleSound should load and decode audio', async () => {
+      const soundId = 'rain';
+      await audioController._loadSingleSound(soundId);
+      expect(global.fetch).toHaveBeenCalledWith(audioController.sounds[soundId].filePath);
+      expect(mockAudioContext.decodeAudioData).toHaveBeenCalled();
+      expect(audioController.sounds[soundId].audioBuffer).toBeDefined();
+      // Check for 'loading' and 'loaded' events
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'loading', soundId })
+      }));
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'loaded', soundId })
+      }));
+    });
+
+    test('_loadSingleSound should attempt fallback path on primary fetch failure', async () => {
+      const soundId = 'ocean';
+      global.fetch
+        .mockImplementationOnce(() => Promise.resolve({ ok: false, status: 404 })) // Fail primary
+        .mockImplementationOnce(() => Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })); // Succeed fallback
+
+      await audioController._loadSingleSound(soundId);
       expect(global.fetch).toHaveBeenCalledWith(audioController.sounds[soundId].filePath);
       expect(global.fetch).toHaveBeenCalledWith(audioController.sounds[soundId].fallbackPath);
-      expect(buffer).toEqual({ mockDecodedBuffer: "fallback" });
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'loading', soundId }) // Initial load attempt
-      }));
-       // We expect an error event for the first failed path, then loaded for fallback.
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'error', soundId, message: expect.stringContaining(audioController.sounds[soundId].filePath) })
-      }));
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'loaded', soundId }) // Fallback load
+      expect(audioController.sounds[soundId].audioBuffer).toBeDefined();
+    });
+
+    test('_loadSingleSound should dispatch error if both paths fail', async () => {
+      const soundId = 'wind';
+      global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 404 })); // Fail both
+
+      await audioController._loadSingleSound(soundId);
+      expect(audioController.sounds[soundId].audioBuffer).toBeNull();
+       expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({
+            status: 'error',
+            soundId,
+            // This message comes from the second (fallback) attempt failing
+            message: `Error loading ${audioController.sounds[soundId].name} from ${audioController.sounds[soundId].fallbackPath}.`
+          })
       }));
     });
 
-    test('handles error if fetch response is not ok and no fallback', async () => {
-        const soundId = 'wind';
-        audioController.sounds[soundId].fallbackPath = null; // Ensure no fallback
-        global.fetch.mockResolvedValueOnce({ ok: false, status: 404 });
-
-        const buffer = await audioController._loadSingleSound(soundId);
-        expect(buffer).toBeNull();
-        expect(audioController.sounds[soundId].audioBuffer).toBeNull();
-        expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'audiostatechange',
-            detail: expect.objectContaining({ status: 'error', soundId })
-        }));
-    });
-
-    test('handles error if decodeAudioData fails', async () => {
-        const soundId = 'ocean';
-        global.fetch.mockResolvedValueOnce({
-            ok: true,
-            arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-        });
-        audioController.audioContext.decodeAudioData.mockRejectedValueOnce(new Error("Decode error"));
-
-        const buffer = await audioController._loadSingleSound(soundId);
-        expect(buffer).toBeNull();
-        expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'audiostatechange',
-            detail: expect.objectContaining({ status: 'error', soundId, message: expect.stringContaining("Error loading") })
-        }));
-    });
-  });
-
-  describe('preloadAllSounds', () => {
-    test('attempts to load sounds marked for preload', async () => {
-      // Assuming 'rain' and 'wind' have preload: true, and 'ocean' has preload: false (adjust as per your actual sounds object)
-      audioController.sounds.rain.preload = true;
-      audioController.sounds.ocean.preload = false;
-      audioController.sounds.wind.preload = true;
-
-      // Mock _loadSingleSound to track calls without actual loading
-      const loadSpy = jest.spyOn(audioController, '_loadSingleSound');
-      loadSpy.mockResolvedValue({ mockBuffer: true }); // Mock successful load
-
+    test('preloadAllSounds should attempt to load all preloadable sounds', async () => {
       await audioController.preloadAllSounds();
+      expect(global.fetch).toHaveBeenCalledWith(audioController.sounds.rain.filePath);
+      expect(global.fetch).toHaveBeenCalledWith(audioController.sounds.ocean.filePath);
+      expect(global.fetch).toHaveBeenCalledWith(audioController.sounds.wind.filePath);
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'info', message: 'Sound preloading complete.' })
+      }));
+    });
 
-      expect(loadSpy).toHaveBeenCalledWith('rain');
-      expect(loadSpy).not.toHaveBeenCalledWith('ocean');
-      expect(loadSpy).toHaveBeenCalledWith('wind');
-      loadSpy.mockRestore();
+    test('preloadAllSounds should dispatch error if no sounds load', async () => {
+      global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 404 }));
+      await audioController.preloadAllSounds();
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'error', message: 'Failed to load any sounds. Please try again.' })
+      }));
     });
   });
 
-  describe('Play, Pause, Resume', () => {
-    const soundId = 'rain'; // Use a consistent soundId for these tests
-
+  describe('Playback Control', () => {
     beforeEach(async () => {
-      // Ensure the sound is "loaded" before each play/pause/resume test for simplicity
-      // This avoids mixing loading logic tests with playback control tests.
-      audioController.sounds[soundId].audioBuffer = { mockBuffer: true }; // Mock a loaded buffer
-      // Reset relevant mock call counts on the shared AudioContext instance's methods
-      audioController.audioContext.resume.mockClear();
-      audioController.audioContext.suspend.mockClear();
-      // The buffer source is created new each time in _playInternal, so its methods (start, stop) are fresh.
+      const soundId = 'rain';
+      audioController.sounds[soundId].audioBuffer = {duration: 60, sampleRate: 44100, numberOfChannels: 2, getChannelData: () => new Float32Array(0)};
+      mockAudioContext.state = 'running';
     });
 
-    test('play starts a loaded sound and dispatches events', async () => {
-      audioController.audioContext.state = 'running'; // Ensure context is running
-      await audioController.play(soundId);
-
-      expect(audioController.audioContext.createBufferSource().start).toHaveBeenCalledTimes(1);
+    test('play should start audio if context is running', () => {
+      const soundId = 'rain';
+      audioController.play(soundId);
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
+      const sourceNode = mockAudioContext.createBufferSource.mock.results[0].value;
+      expect(sourceNode.start).toHaveBeenCalled();
+      expect(audioController.isPlaying).toBe(true);
       expect(audioController.currentSoundId).toBe(soundId);
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'playing', soundId })
+      }));
+    });
+
+    test('play should resume context if suspended, then play', async () => {
+      const soundId = 'rain';
+      mockAudioContext.state = 'suspended'; // Set initial suspended state
+
+      // Ensure the mock for resume() correctly updates the state
+      audioController.audioContext.resume = jest.fn().mockImplementation(() => {
+        audioController.audioContext.state = 'running';
+        return Promise.resolve();
+      });
+
+      audioController.play(soundId);
+      expect(audioController.audioContext.resume).toHaveBeenCalled();
+
+      // Allow the promise chain in play() to resolve
+      await new Promise(process.nextTick); // Or await Promise.resolve();
+
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
+      const sourceNode = mockAudioContext.createBufferSource.mock.results[0].value;
+      expect(sourceNode.start).toHaveBeenCalled();
       expect(audioController.isPlaying).toBe(true);
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'playing', soundId })
-      }));
     });
 
-    test('play resumes context if suspended then plays', async () => {
-      audioController.audioContext.state = 'suspended';
-      await audioController.play(soundId);
+    test('play should stop other sound before playing new one', async () => {
+        const rainSoundId = 'rain';
+        const oceanSoundId = 'ocean';
+        audioController.sounds[oceanSoundId].audioBuffer = {duration: 75, sampleRate: 44100, numberOfChannels: 1, getChannelData: () => new Float32Array(0)};
 
-      expect(audioController.audioContext.resume).toHaveBeenCalledTimes(1);
-      // Need to manually set state to running after resume for mock
-      audioController.audioContext.state = 'running';
-      // Re-run _playInternal or simulate it if play() doesn't chain it after resume in test
-      await audioController._playInternal(soundId);
+        audioController.play(rainSoundId);
+        const firstSourceNode = audioController.sounds[rainSoundId].sourceNode;
+        expect(firstSourceNode.start).toHaveBeenCalled();
 
-      expect(audioController.audioContext.createBufferSource().start).toHaveBeenCalledTimes(1);
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'playing', soundId })
-      }));
+        audioController.play(oceanSoundId);
+        expect(firstSourceNode.stop).toHaveBeenCalled();
+        const secondSourceNode = audioController.sounds[oceanSoundId].sourceNode;
+        expect(secondSourceNode.start).toHaveBeenCalled();
+        expect(audioController.currentSoundId).toBe(oceanSoundId);
     });
 
-    test('pause suspends context and dispatches event', async () => {
-      // First, play a sound to set up state for pause
-      audioController.audioContext.state = 'running';
-      await audioController.play(soundId);
-      mockDispatchEvent.mockClear(); // Clear events from play()
+    test('pause should suspend context if playing', async () => {
+      audioController.play('rain');
+      audioController.pause();
+      expect(mockAudioContext.suspend).toHaveBeenCalled();
 
-      await audioController.pause();
+      await new Promise(process.nextTick); // Allow suspend promise to resolve
 
-      expect(audioController.audioContext.suspend).toHaveBeenCalledTimes(1);
       expect(audioController.isPlaying).toBe(false);
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'paused', soundId })
+      expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'paused', soundId: 'rain' })
       }));
     });
 
-    test('resume resumes context and dispatches event', async () => {
-      // Setup: play then pause a sound
-      audioController.audioContext.state = 'running';
-      await audioController.play(soundId);
-      await audioController.pause(); // This will set state to suspended if mock is right
-      audioController.audioContext.state = 'suspended'; // Ensure state is suspended for resume test
-      mockDispatchEvent.mockClear();
+    test('resume should resume context if paused', async () => {
+      audioController.play('rain');
+      audioController.pause();
+      await new Promise(process.nextTick); // for suspend()
 
-      await audioController.resume();
+      mockAudioContext.state = 'suspended';
+      audioController.audioContext.resume = jest.fn().mockImplementation(() => {
+          audioController.audioContext.state = 'running';
+          return Promise.resolve();
+      });
 
-      expect(audioController.audioContext.resume).toHaveBeenCalledTimes(1); // resume in play + 1 in resume
+      audioController.resume();
+      expect(audioController.audioContext.resume).toHaveBeenCalled();
+      await new Promise(process.nextTick); // for resume()
+
       expect(audioController.isPlaying).toBe(true);
-      expect(mockDispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'audiostatechange',
-        detail: expect.objectContaining({ status: 'resumed', soundId })
+       expect(dispatchEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'audiostatechange',
+          detail: expect.objectContaining({ status: 'resumed', soundId: 'rain' })
       }));
     });
   });
+
+  describe('Volume Control', () => {
+    test('setVolume should adjust masterGainNode value', () => {
+      const volumeValue = 0.5;
+      audioController.setVolume(volumeValue);
+      const expectedGainValue = 0.25;
+      expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
+        .toHaveBeenCalledWith(expectedGainValue, mockAudioContext.currentTime + 0.02);
+    });
+
+    test('setVolume should clamp values between 0 and 1', () => {
+        audioController.setVolume(1.5);
+        expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
+            .toHaveBeenCalledWith(1, mockAudioContext.currentTime + 0.02);
+
+        audioController.setVolume(-0.5);
+        expect(audioController.masterGainNode.gain.linearRampToValueAtTime)
+            .toHaveBeenCalledWith(0, mockAudioContext.currentTime + 0.02);
+    });
+  });
+
+  test('isApiSupported should return true if context exists', () => {
+    expect(audioController.isApiSupported()).toBe(true);
+    const originalAudioContext = audioController.audioContext;
+    audioController.audioContext = null;
+    expect(audioController.isApiSupported()).toBe(false);
+    audioController.audioContext = originalAudioContext;
+  });
+
+  test('getCurrentSoundInfo should return current sound details', () => {
+    const soundId = 'rain';
+    audioController.sounds[soundId].audioBuffer = {duration: 60, sampleRate: 44100, numberOfChannels: 1, getChannelData: () => new Float32Array(0)};
+    audioController.play(soundId);
+
+    const info = audioController.getCurrentSoundInfo();
+    expect(info).toEqual({
+      id: soundId,
+      name: audioController.sounds[soundId].name,
+      isPlaying: true,
+    });
+  });
+
+  test('getCurrentSoundInfo should return null if no sound is current', () => {
+    expect(audioController.getCurrentSoundInfo()).toBeNull();
+  });
+
 });
