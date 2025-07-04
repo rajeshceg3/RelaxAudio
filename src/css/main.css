@@ -1,0 +1,182 @@
+/* CSS Reset/Normalize (Simple version) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #F5F7FA 0%, #C3CFE2 100%);
+  color: #2C3E50;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex; /* Used to help center the main container */
+  flex-direction: column; /* Aligns .soundscape-player-container vertically if body is also flex container */
+}
+
+/* Main Content Wrapper */
+.soundscape-player-container {
+  max-width: 800px;
+  margin: auto; /* Centers the container */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh; /* Ensure it takes full viewport height */
+  padding: 20px;
+  width: 100%; /* Ensures padding doesn't shrink container on very small screens */
+}
+
+/* Sound Buttons Container - Mobile First (Single Column) */
+#sound-selection-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 16px; /* Space between buttons in a column */
+  margin-bottom: 20px; /* Space before volume slider */
+}
+
+/* Sound Buttons */
+#sound-selection-container button {
+  background-color: #E8F4F8; /* Primary button color */
+  color: #2C3E50; /* Text color */
+  border-radius: 24px; /* Pill shape */
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  min-height: 64px; /* Mobile target height */
+  width: 100%; /* Full width for mobile */
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  text-align: center;
+}
+
+#sound-selection-container button:hover {
+  background-color: #F0F8FF; /* Lighter blue for hover */
+}
+
+#sound-selection-container button.active-sound-button {
+  background-color: #D1E7DD; /* Mint green for active */
+  border-color: #A8D5BA; /* Border for active */
+}
+
+#sound-selection-container button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4); /* Custom focus ring */
+}
+
+
+/* Volume Slider - Mobile First */
+#volumeSlider {
+  width: calc(100% - 32px); /* Full width with 16px side margins */
+  margin: 20px 16px;
+  height: 8px; /* Overall height of the slider area for track */
+  -webkit-appearance: none; /* Remove default webkit styles */
+  appearance: none;
+  background: transparent; /* Transparent background for the input itself */
+  cursor: pointer;
+}
+
+/* Volume Slider Track */
+#volumeSlider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  background: #B8D4DA; /* Muted teal for track */
+  border-radius: 4px;
+}
+
+#volumeSlider::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  background: #B8D4DA;
+  border-radius: 4px;
+}
+
+/* Volume Slider Thumb */
+#volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px; /* (Track height - Thumb height) / 2 + border_width approx, if thumb is larger than track. (8px - 20px)/2 = -6px */
+  background: #2C3E50; /* Dark blue-grey for thumb */
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 2px solid #FAFAFA; /* White border for thumb */
+}
+
+#volumeSlider::-moz-range-thumb {
+  background: #2C3E50;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 2px solid #FAFAFA;
+}
+
+#volumeSlider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4); /* Focus for thumb */
+}
+#volumeSlider:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4);
+}
+
+
+/* Playback Status */
+#playbackStatus {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  color: #2C3E50;
+  margin-top: 20px;
+  text-align: center;
+  min-height: 20px; /* Reserve space to prevent layout shifts */
+}
+
+/* Tablet Layout (768px - 1199px) */
+@media (min-width: 768px) {
+  #sound-selection-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr)); /* 3-column grid */
+    gap: 20px; /* Gap between grid items */
+    width: 100%; /* Container takes full width of .soundscape-player-container */
+    max-width: 640px; /* Max width for 3 buttons like 200px + 20px gap */
+  }
+
+  #sound-selection-container button {
+    width: auto; /* Allow button to fill grid cell */
+    min-height: 60px; /* Target height for tablet/desktop */
+  }
+
+  #volumeSlider {
+    width: 300px; /* Fixed width for tablet/desktop */
+    margin: 30px auto; /* Centered with more vertical margin */
+  }
+}
+
+/* Desktop Layout (1200px+) */
+@media (min-width: 1200px) {
+  #sound-selection-container {
+    max-width: 700px; /* Slightly wider for desktop if needed */
+    /* gap: 24px; /* Optional: larger gap for desktop */
+  }
+   #sound-selection-container button {
+    /* Styles from 768px are mostly fine, can add specific overrides if needed */
+  }
+  #volumeSlider {
+    /* width: 320px; /* Optional: slightly wider slider for desktop */
+  }
+}
+
+.hidden {
+    display: none;
+}
