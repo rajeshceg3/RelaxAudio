@@ -12,9 +12,11 @@ export class AudioController {
         this.masterGainNode = null;
         /** @type {Object.<string, SoundDefinition>} */
         this.sounds = {
-            rain: { id: 'rain', name: 'Rain', filePath: '/assets/audio/rain.mp3', fallbackPath: '/assets/audio/rain.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: '/assets/audio/waves.mp3', fallbackPath: '/assets/audio/waves.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            wind: { id: 'wind', name: 'Wind', filePath: '/assets/audio/wind.mp3', fallbackPath: '/assets/audio/wind.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            sereneView: { id: 'sereneView', name: 'Serene View', filePath: '/assets/audio/serene-view.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            valleySunset: { id: 'valleySunset', name: 'Valley Sunset', filePath: '/assets/audio/valley-sunset.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            meditationMusic: { id: 'meditationMusic', name: 'Meditation Music', filePath: '/assets/audio/meditation-music.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            softPiano: { id: 'softPiano', name: 'Soft Piano Calm', filePath: '/assets/audio/soft-piano-calm.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            peacefulRelaxing: { id: 'peacefulRelaxing', name: 'Peaceful And Relaxing', filePath: '/assets/audio/peaceful-relaxing.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null }
         };
         /** @type {string|null} */
         this.currentSoundId = null;
