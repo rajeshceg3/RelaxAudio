@@ -12,9 +12,11 @@ export class AudioController {
         this.masterGainNode = null;
         /** @type {Object.<string, SoundDefinition>} */
         this.sounds = {
-            rain: { id: 'rain', name: 'Rain', filePath: '/assets/audio/rain.mp3', fallbackPath: '/assets/audio/rain.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: '/assets/audio/waves.mp3', fallbackPath: '/assets/audio/waves.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            wind: { id: 'wind', name: 'Wind', filePath: '/assets/audio/wind.mp3', fallbackPath: '/assets/audio/wind.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fesliyan1: { id: 'fesliyan1', name: 'Fesliyan Track 1', filePath: '/assets/audio/fesliyan-track-1.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fesliyan2: { id: 'fesliyan2', name: 'Fesliyan Track 2', filePath: '/assets/audio/fesliyan-track-2.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fesliyan3: { id: 'fesliyan3', name: 'Fesliyan Track 3', filePath: '/assets/audio/fesliyan-track-3.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fesliyan4: { id: 'fesliyan4', name: 'Fesliyan Track 4', filePath: '/assets/audio/fesliyan-track-4.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fesliyan5: { id: 'fesliyan5', name: 'Fesliyan Track 5', filePath: '/assets/audio/fesliyan-track-5.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null }
         };
         /** @type {string|null} */
         this.currentSoundId = null;
