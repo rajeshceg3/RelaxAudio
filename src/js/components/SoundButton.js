@@ -1,4 +1,4 @@
-class SoundButton extends HTMLElement {
+export class SoundButton extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -48,8 +48,7 @@ class SoundButton extends HTMLElement {
            For PRD alignment, font-weight: bold for playing is a good indicator.
         */
         :host([playing]) button {
-          /* font-weight: bold; /* This is handled in JS _updatePlayingState now */
-          /* If other 'playing' specific visual cues are needed, add here */
+          font-weight: bold;
         }
 
         /* Focus State */
@@ -143,13 +142,8 @@ class SoundButton extends HTMLElement {
 
   _updatePlayingState() {
     this._button.setAttribute('aria-pressed', this.playing ? 'true' : 'false');
-    // Visual change specifically for playing state can be handled by :host([playing]) button
-    // For instance, to add the bold font weight if it's playing:
-    if (this.playing) {
-      this._button.style.fontWeight = 'bold';
-    } else {
-      this._button.style.fontWeight = 'normal';
-    }
+    // The visual change (bold font weight) is now handled by the CSS selector :host([playing]) button.
+    // No direct style manipulation is needed here.
   }
 }
 

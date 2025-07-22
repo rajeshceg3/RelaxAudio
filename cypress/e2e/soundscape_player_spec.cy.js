@@ -35,7 +35,11 @@ describe('Soundscape Player E2E Test', () => {
     // Check for initial status message (example)
     // The initial message can be "Loading soundscape..." or "Sounds preloaded..." or "Select a sound..."
     // depending on timing and preload success. Making this check more flexible.
-    cy.get('@playerInternals').find('#playback-status-display').invoke('text').should('match', /Loading soundscape...|Sounds preloaded. Ready to play.|Select a sound to play./);
+    cy.get('@playerInternals').find('#playback-status-display').as('statusDisplay');
+    cy.get('@statusDisplay').invoke('text').should('match', /Loading soundscape...|Sounds preloaded. Ready to play.|Select a sound to play./)
+      .then(() => {
+        cy.get('@consoleLog').should('be.calledWith', 'Starting preloading for all sounds marked for preload...');
+      });
   });
 
   it('should play rain sounds when rain button is clicked, then pause', () => {

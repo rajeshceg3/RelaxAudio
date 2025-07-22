@@ -1,14 +1,10 @@
-// Assume AudioController.js, SoundButton.js, and VolumeSlider.js are in the same directory or accessible via module resolution
-// For this example, direct path imports are used. Adjust if using a bundler or different structure.
-// These components must be defined *before* SoundscapePlayer is defined or used.
-// import '../AudioController.js'; // Assuming AudioController.js is in a parent 'js' directory
-// import './SoundButton.js';
-// import './VolumeSlider.js';
-// Actual imports will be handled by the bundler or script loading order in HTML.
+import { AudioController } from '../audio/AudioController.js';
+import { SoundButton } from './SoundButton.js';
+import { VolumeSlider } from './VolumeSlider.js';
 
 const LOCAL_STORAGE_VOLUME_KEY = 'soundscapePlayerVolume';
 
-class SoundscapePlayer extends HTMLElement {
+export class SoundscapePlayer extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -174,11 +170,10 @@ class SoundscapePlayer extends HTMLElement {
 
     // Preload sounds
     // Use preloadAllSounds as specified
-    this.audioController.preloadAllSounds().then(() => {
-      this._updateStatus('Sounds preloaded. Ready to play.');
-    }).catch(error => {
-      console.error('Error preloading sounds:', error);
-      this._updateStatus(`Error preloading sounds: ${error.message || 'Unknown error'}`, true);
+    this.audioController.preloadAllSounds().catch(error => {
+        // This catch is for unexpected errors during the preloadAllSounds execution itself.
+        // Specific sound load errors are handled via events.
+        this._handleCriticalError(`A critical error occurred while preloading sounds: ${error.message}`);
     });
   }
 
@@ -193,8 +188,23 @@ class SoundscapePlayer extends HTMLElement {
     // Remove ESC key listener
     window.removeEventListener('keydown', this._handleEscKey);
 
-    // Removed call to this.audioController.destroy() as it doesn't exist.
+    if (this.audioController) {
+        // Stop any playing sound to prevent it from continuing after the element is removed.
+        this.audioController.pause(); // Using pause which suspends context, effectively stopping sound.
+    }
   }
+
+  _handleCriticalError(message) {
+    this._updateStatus(message, true);
+    const soundButtons = this._soundSelectionArea.querySelectorAll('sound-button');
+    soundButtons.forEach(button => {
+        button.disabled = true;
+    });
+    if (this._volumeSlider) {
+        this._volumeSlider.disabled = true;
+    }
+    console.error(`Critical Error: ${message}`);
+}
 
   _populateSoundButtons() {
     if (!this.audioController || !this.audioController.sounds) {
@@ -301,82 +311,77 @@ class SoundscapePlayer extends HTMLElement {
   _handleAudioStateChange(event) {
     const { status, soundId, message } = event.detail;
 
+    // Always update status message if provided
     if (message) {
-      this._updateStatus(message, status === 'error');
+        this._updateStatus(message, status === 'error');
     }
 
-    // Handle 'unsupported' state specifically to disable controls
-    if (status === 'unsupported') {
-      this._disableControlsWithMessage(message || 'Audio playback is not supported by your browser.');
-      return; // No further UI updates needed for buttons if controls are disabled
+    // Centralized state updates based on status
+    switch (status) {
+        case 'playing':
+        case 'resumed':
+            this._currentSoundId = soundId;
+            this._isSoundPlaying = true;
+            break;
+        case 'paused':
+            this._currentSoundId = soundId; // Keep sound selected
+            this._isSoundPlaying = false;
+            break;
+        case 'stopped':
+            // If the stopped sound is the current one, or if it's a global stop
+            if (this._currentSoundId === soundId || !soundId) {
+                this._currentSoundId = null;
+                this._isSoundPlaying = false;
+            }
+            break;
+        case 'error':
+            // If the error is for the current sound, update its state
+            if (this._currentSoundId === soundId) {
+                this._isSoundPlaying = false;
+            }
+            // If it's a global error, reset all
+            if (!soundId) {
+                this._currentSoundId = null;
+                this._isSoundPlaying = false;
+            }
+            break;
+        case 'unsupported':
+            this._disableControlsWithMessage(message || 'Audio playback is not supported.');
+            return; // Exit early, no other UI updates needed
     }
 
-    if (status === 'error') {
-      // Specific handling for critical preloading failure
-      if (message === 'Failed to load any sounds. Please try again.') {
-        const soundButtons = this._soundSelectionArea.querySelectorAll('sound-button');
-        soundButtons.forEach(button => {
-          button.disabled = true;
-        });
-        // Note: _updateStatus would have already been called with this message.
-        // Volume slider remains enabled.
-      }
-      // General error handling for sound currently playing or global error
-      else if (soundId && this._currentSoundId === soundId) {
-        this._isSoundPlaying = false;
-        // Optionally, clear _currentSoundId or leave it selected but errored
-      } else if (!soundId) { // Global error not tied to a specific sound
-        this._isSoundPlaying = false;
-        this._currentSoundId = null;
-      }
-      // If it's an error for a sound not currently selected, its button state won't change here,
-      // it will remain non-selected and non-playing. Message is already displayed.
-    } else if (status === 'playing' || status === 'resumed') {
-      this._currentSoundId = soundId;
-      this._isSoundPlaying = true;
-    } else if (status === 'paused') {
-      this._currentSoundId = soundId; // Sound is still selected
-      this._isSoundPlaying = false;
-    } else if (status === 'stopped') {
-      if (this._currentSoundId === soundId || !soundId) { // Specific sound stopped or all sounds stopped
-        this._isSoundPlaying = false;
-        // If !soundId (all stopped), then also clear current selection.
-        // If specific sound stopped, it's no longer the current one for playback.
-        this._currentSoundId = null;
-      }
-    } else if (status === 'loading') {
-      // Handled by the message in AudioController, button state can remain as is or show loading
-      // For now, we primarily react to play/pause/stop/error for button active state.
-    }
+    // Update all buttons based on the single source of truth
+    this._updateAllButtonStates();
 
-    // Update all sound buttons based on the new state `this._currentSoundId` and `this._isSoundPlaying`
+    // Update the main status message if no specific message came with the event
+    if (!message) {
+        this._updateGeneralStatusMessage();
+    }
+}
+
+_updateAllButtonStates() {
     const buttons = this._soundSelectionArea.querySelectorAll('sound-button');
     buttons.forEach(button => {
-      const id = button.getAttribute('sound-id');
-      if (id === this._currentSoundId) {
-        // This sound is the currently selected one
-        button.selected = true;
-        button.playing = this._isSoundPlaying; // True if playing, false if paused
-      } else {
-        // All other sounds are not selected and not playing
-        button.selected = false;
-        button.playing = false;
-      }
+        const id = button.getAttribute('sound-id');
+        const isSelected = id === this._currentSoundId;
+        button.selected = isSelected;
+        button.playing = isSelected && this._isSoundPlaying;
     });
+}
 
-    // Update status message based on overall state if no specific message came from the event
-    if (!message) {
-        if (this._currentSoundId && this._isSoundPlaying) {
-            const currentButton = this._soundSelectionArea.querySelector(`sound-button[sound-id="${this._currentSoundId}"]`);
-            this._updateStatus(`Playing: ${currentButton ? currentButton.getAttribute('sound-name') : this._currentSoundId}`);
-        } else if (this._currentSoundId && !this._isSoundPlaying) {
-            const currentButton = this._soundSelectionArea.querySelector(`sound-button[sound-id="${this._currentSoundId}"]`);
-            this._updateStatus(`Paused: ${currentButton ? currentButton.getAttribute('sound-name') : this._currentSoundId}. Select again or another sound.`);
-        } else {
-            this._updateStatus('Select a sound to play.');
-        }
+_updateGeneralStatusMessage() {
+    if (this._currentSoundId && this._isSoundPlaying) {
+        const currentButton = this._soundSelectionArea.querySelector(`sound-button[sound-id="${this._currentSoundId}"]`);
+        const soundName = currentButton ? currentButton.getAttribute('sound-name') : this._currentSoundId;
+        this._updateStatus(`Playing: ${soundName}`);
+    } else if (this._currentSoundId && !this._isSoundPlaying) {
+        const currentButton = this._soundSelectionArea.querySelector(`sound-button[sound-id="${this._currentSoundId}"]`);
+        const soundName = currentButton ? currentButton.getAttribute('sound-name') : this._currentSoundId;
+        this._updateStatus(`Paused: ${soundName}. Select again or another sound.`);
+    } else {
+        this._updateStatus('Select a sound to play.');
     }
-  }
+}
 
   _updateStatus(message, isError = false) {
     if (this._statusDisplay) {

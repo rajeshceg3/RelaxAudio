@@ -1,7 +1,13 @@
-class VolumeSlider extends HTMLElement {
+export class VolumeSlider extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+
+    // Initialize properties in the constructor
+    this._min = 0;
+    this._max = 1;
+    this._step = 0.01;
+    this._value = 0.5;
 
     const template = document.createElement('template');
     template.innerHTML = `
@@ -109,11 +115,11 @@ class VolumeSlider extends HTMLElement {
   }
 
   connectedCallback() {
-    // Set default values if attributes are not provided
-    this._min = this.hasAttribute('min') ? parseFloat(this.getAttribute('min')) : 0;
-    this._max = this.hasAttribute('max') ? parseFloat(this.getAttribute('max')) : 1;
-    this._step = this.hasAttribute('step') ? parseFloat(this.getAttribute('step')) : 0.01;
-    this._value = this.hasAttribute('value') ? parseFloat(this.getAttribute('value')) : (this._min + this._max) / 2;
+    // Reflect attributes to properties if they exist
+    if (this.hasAttribute('min')) this._min = parseFloat(this.getAttribute('min'));
+    if (this.hasAttribute('max')) this._max = parseFloat(this.getAttribute('max'));
+    if (this.hasAttribute('step')) this._step = parseFloat(this.getAttribute('step'));
+    if (this.hasAttribute('value')) this._value = parseFloat(this.getAttribute('value'));
 
     this._applyAttributesToInput();
     this._updateAriaAttributes();
@@ -194,25 +200,18 @@ class VolumeSlider extends HTMLElement {
   }
 
   _onChange(event) {
-    // This handles cases like keyboard interaction or when the user releases the mouse
-    // after dragging, ensuring the final value is captured if it differs from 'input' events.
+    // The 'input' event handles real-time updates. The 'change' event fires when the user
+    // releases the slider. We can use this to ensure the final state is synced, but
+    // dispatching another event is often redundant if 'input' is already handled.
+    // This handler can be used for final state logic if needed, but for now, we'll
+    // prevent the redundant event dispatch.
     const newValue = parseFloat(event.target.value);
     if (this._value !== newValue) {
-      this._value = newValue;
-      this.setAttribute('value', newValue.toString()); // Ensure attribute is synced
-      this._updateAriaAttributes();
-
-      // It's common to dispatch the primary change event on 'input' for real-time feedback.
-      // If you only want to dispatch on 'change', move the dispatch from _onInput here.
-      // For this component, 'input' is generally preferred for live updates.
-      // However, to be safe, we can dispatch here too if state has changed.
-      // This ensures that if an 'input' event wasn't fired for some reason,
-      // the 'change' event (which fires after 'input') will.
-      this.dispatchEvent(new CustomEvent('volume-changed', {
-        detail: { value: newValue },
-        bubbles: true,
-        composed: true,
-      }));
+        this._value = newValue;
+        this.setAttribute('value', newValue.toString());
+        this._updateAriaAttributes();
+        // The primary 'volume-changed' event is dispatched on 'input' for live feedback.
+        // We don't need to dispatch it again on 'change'.
     }
   }
 

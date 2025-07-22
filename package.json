@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx",
     "format": "prettier --write .",
-    "test": "jest"
+    "test": "jest",
+    "test:e2e": "cypress run",
+    "cy:run": "start-server-and-test dev http-get://localhost:5173 test:e2e"
   },
   "keywords": [
     "vite",
@@ -19,13 +21,15 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "vite": "^5.0.0",
-    "eslint": "^8.0.0",
-    "prettier": "^3.0.0",
-    "eslint-config-prettier": "^9.0.0",
-    "jest": "^29.0.0",
     "@babel/preset-env": "^7.20.0",
     "babel-jest": "^29.0.0",
-    "jest-environment-jsdom": "^29.0.0"
+    "cypress": "^14.5.2",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0",
+    "prettier": "^3.0.0",
+    "start-server-and-test": "^2.0.12",
+    "vite": "^5.0.0"
   }
 }

@@ -13,11 +13,11 @@ export class AudioController {
         /** @type {Object.<string, SoundDefinition>} */
         this.sounds = {
 
-            rain: { id: 'rain', name: 'Heavy Rain', filePath: '/assets/audio/heavy-rain.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: '/assets/audio/ocean-waves.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            wind: { id: 'wind', name: 'Strong Wind', filePath: '/assets/audio/strong-wind.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            forest: { id: 'forest', name: 'Forest Ambience', filePath: '/assets/audio/forest-ambience.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            fireplace: { id: 'fireplace', name: 'Crackling Fireplace', filePath: '/assets/audio/fireplace-crackling.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            rain: { id: 'rain', name: 'Heavy Rain', filePath: 'assets/audio/heavy-rain.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: 'assets/audio/ocean-waves.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            wind: { id: 'wind', name: 'Strong Wind', filePath: 'assets/audio/strong-wind.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            forest: { id: 'forest', name: 'Forest Ambience', filePath: 'assets/audio/forest-ambience.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fireplace: { id: 'fireplace', name: 'Crackling Fireplace', filePath: 'assets/audio/fireplace-crackling.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
 
         };
         /** @type {string|null} */
@@ -79,20 +79,19 @@ export class AudioController {
             throw new Error(`Unknown sound ID: ${soundId}`);
         }
 
+        // If buffer exists and we are not specifically trying a fallback, return it.
         if (sound.audioBuffer && !useFallback) {
-            return sound.audioBuffer;
-        }
-        if (sound.audioBuffer && useFallback) {
             return sound.audioBuffer;
         }
 
         const path = useFallback ? sound.fallbackPath : sound.filePath;
-        if (!path) {
-            const errMessage = useFallback ? `No fallback path for ${sound.name}.` : `No primary path for ${sound.name}.`;
-            console.warn(errMessage);
-            if (!useFallback && sound.fallbackPath) {
-                 return await this._loadSingleSound(soundId, true);
-            }
+
+        // If no path, and not already trying a fallback, try the fallback path.
+        if (!path && !useFallback && sound.fallbackPath) {
+            console.warn(`No primary path for ${sound.name}. Attempting fallback.`);
+            return await this._loadSingleSound(soundId, true);
+        } else if (!path) {
+            const errMessage = `No valid file path for ${sound.name}.`;
             this._dispatchEvent('error', soundId, errMessage);
             return null;
         }
@@ -105,6 +104,7 @@ export class AudioController {
 
         try {
             const response = await fetch(path);
+            console.log('response', response);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status} while fetching ${path}`);
             }
@@ -116,16 +116,16 @@ export class AudioController {
             return sound.audioBuffer;
         } catch (error) {
             console.error(`Error loading sound ${sound.name} from ${path}:`, error);
-            sound.audioBuffer = null;
+            sound.audioBuffer = null; // Clear buffer on error
 
+            // If the primary path failed and a fallback exists, try it.
             if (!useFallback && sound.fallbackPath) {
-                console.log(`Attempting to load fallback for ${sound.name} from ${sound.fallbackPath}`);
-                const fallbackBuffer = await this._loadSingleSound(soundId, true);
-                if (fallbackBuffer) return fallbackBuffer;
-                this._dispatchEvent('error', soundId, `Failed to load ${sound.name} (primary and fallback).`);
-                return null;
+                console.log(`Primary path failed for ${sound.name}. Attempting fallback.`);
+                return await this._loadSingleSound(soundId, true);
             }
-            this._dispatchEvent('error', soundId, `Error loading ${sound.name} from ${path}.`);
+
+            // If fallback also fails or doesn't exist
+            this._dispatchEvent('error', soundId, `Failed to load ${sound.name}.`);
             return null;
         } finally {
             this.loadingStates[soundId] = false;
@@ -226,6 +226,8 @@ export class AudioController {
                 console.log(`Sound ${soundToPlay.name} is already current. Restarting.`);
                 try { this.sounds[oldSoundId].sourceNode.stop(); } catch (e) { /* ignore */ }
                 this.sounds[oldSoundId].sourceNode = null;
+                // Dispatch 'stopped' for the old sound if it's different from the new one.
+                this._dispatchEvent('stopped', oldSoundId);
             } else {
                 console.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`);
                 try { this.sounds[oldSoundId].sourceNode.stop(); } catch (e) { /* ignore */ }
@@ -304,23 +306,21 @@ export class AudioController {
             console.log(`Attempting to resume AudioContext for ${this.sounds[this.currentSoundId].name}...`);
             this.audioContext.resume()
                 .then(() => {
-                    this.isPlaying = true;
-                    this._dispatchEvent('resumed', this.currentSoundId);
-
-                    if (!this.sounds[this.currentSoundId].sourceNode ||
-                        (this.sounds[this.currentSoundId].sourceNode && typeof this.sounds[this.currentSoundId].sourceNode.playbackState !== 'undefined' && this.sounds[this.currentSoundId].sourceNode.playbackState === AudioBufferSourceNode.FINISHED_STATE) ) {
-                        console.log('Source node seems to have finished or is invalid, restarting playback for resume.');
-                        this._playInternal(this.currentSoundId);
-                    }
+                    console.log('AudioContext resumed. Re-playing sound.');
+                    // Don't just resume context, but re-trigger play to ensure a fresh source node.
+                    this._playInternal(this.currentSoundId);
+                    // The 'resumed' state is effectively a 'playing' state from the user's perspective.
+                    // _playInternal will dispatch 'playing'.
                 })
                 .catch(err => {
                     console.error("Error resuming AudioContext:", err);
                     this._dispatchEvent('error', this.currentSoundId, "Error resuming sound.");
                 });
         } else if (this.audioContext.state === 'suspended') {
-             this.audioContext.resume()
-                .then(() => console.log("AudioContext resumed generally."))
-                .catch(err => console.error("Error resuming general AudioContext:", err));
+            // If no sound is active, just resume the context for future plays.
+            this.audioContext.resume()
+               .then(() => console.log("AudioContext resumed generally."))
+               .catch(err => console.error("Error resuming general AudioContext:", err));
         }
     }
 
