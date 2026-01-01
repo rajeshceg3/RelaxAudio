@@ -1,6 +1,6 @@
 import { AudioController } from '../audio/AudioController.js';
-import { SoundButton } from './SoundButton.js';
-import { VolumeSlider } from './VolumeSlider.js';
+import './SoundButton.js'; // Import for side effects (custom element registration)
+import './VolumeSlider.js'; // Import for side effects (custom element registration)
 
 const LOCAL_STORAGE_VOLUME_KEY = 'soundscapePlayerVolume';
 
@@ -265,7 +265,7 @@ export class SoundscapePlayer extends HTMLElement {
     localStorage.setItem(LOCAL_STORAGE_VOLUME_KEY, volume.toString());
   }
 
-   _updateAriaForVolume(volume) {
+   _updateAriaForVolume(volume) { // eslint-disable-line no-unused-vars
     if (this._volumeSlider) {
       // The VolumeSlider component itself should manage its aria-valuenow and aria-valuetext
       // This is just ensuring the player's context is aware if needed.
@@ -289,7 +289,7 @@ export class SoundscapePlayer extends HTMLElement {
 
     const soundInfo = this.audioController.getCurrentSoundInfo();
 
-    if (soundInfo && soundInfo.currentSoundId === soundId && soundInfo.isPlaying) {
+    if (soundInfo && soundInfo.id === soundId && soundInfo.isPlaying) {
       this.audioController.pause();
     } else {
       // If it's a different sound, or the same sound but paused/stopped

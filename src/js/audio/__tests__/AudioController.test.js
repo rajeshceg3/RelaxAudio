@@ -17,7 +17,7 @@ const mockAudioContext = {
     loop: false,
     buffer: null,
   }),
-  decodeAudioData: jest.fn().mockImplementation(buffer => Promise.resolve({duration: 60})), // Mock successful decode
+  decodeAudioData: jest.fn().mockImplementation(() => Promise.resolve({duration: 60})), // Mock successful decode
   resume: jest.fn().mockResolvedValue(undefined),
   suspend: jest.fn().mockResolvedValue(undefined),
   destination: {},
@@ -69,7 +69,7 @@ describe('AudioController', () => {
             loop: false,
             buffer: null,
         });
-        mockAudioContext.decodeAudioData = jest.fn().mockImplementation(buffer => Promise.resolve({duration: 60}));
+        mockAudioContext.decodeAudioData = jest.fn().mockImplementation(() => Promise.resolve({duration: 60}));
         mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
         mockAudioContext.suspend = jest.fn().mockResolvedValue(undefined);
         return mockAudioContext;
@@ -146,8 +146,7 @@ describe('AudioController', () => {
           detail: expect.objectContaining({
             status: 'error',
             soundId,
-            // This message comes from the second (fallback) attempt failing
-            message: `Error loading ${audioController.sounds[soundId].name} from ${audioController.sounds[soundId].fallbackPath}.`
+            message: `Failed to load ${audioController.sounds[soundId].name}.`
           })
       }));
     });
