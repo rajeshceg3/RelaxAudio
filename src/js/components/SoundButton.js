@@ -21,12 +21,18 @@ export class SoundButton extends HTMLElement {
           font-size: 16px;
           font-weight: 500;
           letter-spacing: 0.5px;
-          min-height: 60px; /* PRD US-005 specifies 60px for desktop */
+          min-height: 64px; /* PRD Mobile Requirement: 64px minimum */
           cursor: pointer;
           transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
           text-align: center;
           width: 100%; /* Button fills its host element */
           font-family: inherit; /* Inherit font from host, which should be 'Inter' via body style */
+        }
+
+        @media (min-width: 768px) {
+          button {
+            min-height: 60px; /* PRD Desktop Requirement: 60px */
+          }
         }
 
         /* Hover State */

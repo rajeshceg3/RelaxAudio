@@ -13,11 +13,11 @@ export class AudioController {
         /** @type {Object.<string, SoundDefinition>} */
         this.sounds = {
 
-            rain: { id: 'rain', name: 'Heavy Rain', filePath: 'assets/audio/heavy-rain.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: 'assets/audio/ocean-waves.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            wind: { id: 'wind', name: 'Strong Wind', filePath: 'assets/audio/strong-wind.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            forest: { id: 'forest', name: 'Forest Ambience', filePath: 'assets/audio/forest-ambience.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            fireplace: { id: 'fireplace', name: 'Crackling Fireplace', filePath: 'assets/audio/fireplace-crackling.mp3', fallbackPath: '', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            rain: { id: 'rain', name: 'Heavy Rain', filePath: 'assets/audio/heavy-rain.mp3', fallbackPath: 'assets/audio/heavy-rain.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: 'assets/audio/ocean-waves.mp3', fallbackPath: 'assets/audio/ocean-waves.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            wind: { id: 'wind', name: 'Strong Wind', filePath: 'assets/audio/strong-wind.mp3', fallbackPath: 'assets/audio/strong-wind.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            forest: { id: 'forest', name: 'Forest Ambience', filePath: 'assets/audio/forest-ambience.mp3', fallbackPath: 'assets/audio/forest-ambience.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+            fireplace: { id: 'fireplace', name: 'Crackling Fireplace', filePath: 'assets/audio/fireplace-crackling.mp3', fallbackPath: 'assets/audio/fireplace-crackling.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
 
         };
         /** @type {string|null} */
@@ -219,19 +219,39 @@ export class AudioController {
     async _playInternal(soundId) {
         const soundToPlay = this.sounds[soundId];
         const oldSoundId = this.currentSoundId;
+        const FADE_DURATION = 0.5; // seconds
 
-        // Stop any currently playing sound
+        // Stop any currently playing sound with a fade out
         if (oldSoundId && this.sounds[oldSoundId] && this.sounds[oldSoundId].sourceNode) {
+            const oldSource = this.sounds[oldSoundId].sourceNode;
+            const oldGain = this.sounds[oldSoundId].gainNode;
+
             if (oldSoundId === soundId) {
                 console.log(`Sound ${soundToPlay.name} is already current. Restarting.`);
-                try { this.sounds[oldSoundId].sourceNode.stop(); } catch (e) { /* ignore */ }
+                // For restart, maybe a quick crossfade or just stop and start
+                // Let's fade out the old one
+                if (oldGain) {
+                    try {
+                        oldGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.1);
+                    } catch (e) { /* ignore */ }
+                }
+                try { oldSource.stop(this.audioContext.currentTime + 0.1); } catch (e) { /* ignore */ }
+
                 this.sounds[oldSoundId].sourceNode = null;
-                // Dispatch 'stopped' for the old sound if it's different from the new one.
+                this.sounds[oldSoundId].gainNode = null;
                 this._dispatchEvent('stopped', oldSoundId);
             } else {
                 console.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`);
-                try { this.sounds[oldSoundId].sourceNode.stop(); } catch (e) { /* ignore */ }
+                // Crossfade: Fade out old sound
+                 if (oldGain) {
+                    try {
+                        oldGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + FADE_DURATION);
+                    } catch (e) { /* ignore */ }
+                }
+                try { oldSource.stop(this.audioContext.currentTime + FADE_DURATION); } catch (e) { /* ignore */ }
+
                 this.sounds[oldSoundId].sourceNode = null;
+                this.sounds[oldSoundId].gainNode = null;
                 this._dispatchEvent('stopped', oldSoundId);
             }
         }
@@ -255,11 +275,22 @@ export class AudioController {
         const sourceNode = this.audioContext.createBufferSource();
         sourceNode.buffer = soundToPlay.audioBuffer;
         sourceNode.loop = true;
-        sourceNode.connect(this.masterGainNode);
+
+        // Create a gain node for this specific sound to handle its fade in/out independently
+        const soundGainNode = this.audioContext.createGain();
+        soundGainNode.gain.value = 0; // Start at 0 for fade in
+
+        sourceNode.connect(soundGainNode);
+        soundGainNode.connect(this.masterGainNode);
 
         try {
             sourceNode.start(0);
+            // Fade in
+            soundGainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + FADE_DURATION);
+
             soundToPlay.sourceNode = sourceNode;
+            soundToPlay.gainNode = soundGainNode; // Store gain node reference
+
             this.currentSoundId = soundId;
             this.isPlaying = true;
             this._dispatchEvent('playing', this.currentSoundId);
@@ -271,6 +302,10 @@ export class AudioController {
             if (soundToPlay.sourceNode) {
                  soundToPlay.sourceNode.disconnect();
                  soundToPlay.sourceNode = null;
+            }
+            if (soundToPlay.gainNode) {
+                soundToPlay.gainNode.disconnect();
+                soundToPlay.gainNode = null;
             }
         }
     }
@@ -308,9 +343,10 @@ export class AudioController {
                 .then(() => {
                     console.log('AudioContext resumed. Re-playing sound.');
                     // Don't just resume context, but re-trigger play to ensure a fresh source node.
-                    this._playInternal(this.currentSoundId);
-                    // The 'resumed' state is effectively a 'playing' state from the user's perspective.
-                    // _playInternal will dispatch 'playing'.
+                    // _playInternal will dispatch 'playing', but we also want 'resumed' for the UI/Tests
+                     this._playInternal(this.currentSoundId).then(() => {
+                         this._dispatchEvent('resumed', this.currentSoundId);
+                     });
                 })
                 .catch(err => {
                     console.error("Error resuming AudioContext:", err);
@@ -381,4 +417,5 @@ export class AudioController {
  * @property {boolean} preload - Whether to preload this sound.
  * @property {AudioBuffer|null} audioBuffer - Stores the decoded audio data.
  * @property {AudioBufferSourceNode|null} sourceNode - Stores the currently playing source node for this sound.
+ * @property {GainNode|null} gainNode - Stores the gain node for this sound (for fading).
  */
