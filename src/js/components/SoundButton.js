@@ -152,5 +152,3 @@ export class SoundButton extends HTMLElement {
     // No direct style manipulation is needed here.
   }
 }
-
-customElements.define('sound-button', SoundButton);

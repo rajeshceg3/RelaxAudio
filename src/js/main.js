@@ -34,6 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // If SoundscapePlayer element itself is missing or fails catastrophically
     // (e.g., its class is not defined), that would be a different kind of error
     // that might be caught here or simply result in a non-functional page.
+
+    // Register Service Worker for PWA support
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
 });
 
 // All previous logic related to:
