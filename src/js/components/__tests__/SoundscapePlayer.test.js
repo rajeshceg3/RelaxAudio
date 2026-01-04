@@ -49,7 +49,11 @@ if (!customElements.get('volume-slider')) {
 // Import SoundscapePlayer AFTER mocking AudioController
 // This ensures that when SoundscapePlayer imports AudioController (if it were a side-effect import), it gets the mock.
 // Though here AudioController is used inside the class, so it's fine.
-import '../SoundscapePlayer.js';
+import { SoundscapePlayer } from '../SoundscapePlayer.js';
+
+if (!customElements.get('soundscape-player')) {
+  customElements.define('soundscape-player', SoundscapePlayer);
+}
 
 describe('SoundscapePlayer Component', () => {
   let soundscapePlayer;

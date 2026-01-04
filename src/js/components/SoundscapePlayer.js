@@ -1,6 +1,4 @@
 import { AudioController } from '../audio/AudioController.js';
-import './SoundButton.js'; // Import for side effects (custom element registration)
-import './VolumeSlider.js'; // Import for side effects (custom element registration)
 
 const LOCAL_STORAGE_VOLUME_KEY = 'soundscapePlayerVolume';
 
@@ -214,7 +212,7 @@ export class SoundscapePlayer extends HTMLElement {
     }
     // Iterate over Object.values for the sounds object
     Object.values(this.audioController.sounds).forEach(sound => {
-      if (typeof SoundButton === 'undefined') {
+      if (!customElements.get('sound-button')) {
         this._updateStatus('Error: SoundButton not found.', true);
         console.error('SoundButton is not defined. Make sure it is loaded before SoundscapePlayer.');
         return;
@@ -411,5 +409,3 @@ _updateGeneralStatusMessage() {
     console.warn(`SoundscapePlayer controls disabled: ${message}`);
   }
 }
-
-customElements.define('soundscape-player', SoundscapePlayer);

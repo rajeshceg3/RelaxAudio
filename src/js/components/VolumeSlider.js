@@ -228,5 +228,3 @@ export class VolumeSlider extends HTMLElement {
     }
   }
 }
-
-customElements.define('volume-slider', VolumeSlider);
