@@ -1,43 +1,71 @@
 // src/js/components/__tests__/SoundButton.test.js
-import '../SoundButton.js'; // Assuming this defines customElements.define('sound-button', SoundButton);
+import { SoundButton } from '../SoundButton.js';
 
 describe('SoundButton Component', () => {
-  let soundButton;
-
-  beforeEach(() => {
-    // Define the custom element if not already defined by the import
-    // This guard is useful if tests are run in an environment where elements might persist
-    // or if the import itself doesn't trigger customElements.define (e.g. if guarded internally).
+  beforeAll(() => {
     if (!customElements.get('sound-button')) {
-        // In a Jest environment, direct import of SoundButton.js should execute its
-        // customElements.define call. If it's structured as a module that exports the class
-        // but define is called elsewhere (like main.js), then this mock might be needed.
-        // For this project, SoundButton.js calls customElements.define itself.
-        // So, direct import should be sufficient. This is a fallback.
-        class MockSoundButton extends HTMLElement {
-            constructor() { super(); this.attachShadow({mode: 'open'}).innerHTML = '<button></button>'; }
-            // Mock necessary properties/methods if needed for basic rendering tests
-            set selected(val) { this.toggleAttribute('selected', Boolean(val)); }
-            get selected() { return this.hasAttribute('selected'); }
-            set playing(val) { this.toggleAttribute('playing', Boolean(val)); }
-            get playing() { return this.hasAttribute('playing'); }
-        }
-        customElements.define('sound-button', MockSoundButton);
+      customElements.define('sound-button', SoundButton);
     }
-    soundButton = document.createElement('sound-button');
-    document.body.appendChild(soundButton);
   });
 
   afterEach(() => {
-    if (soundButton && soundButton.parentNode) {
-      soundButton.parentNode.removeChild(soundButton);
-    }
+    document.body.innerHTML = '';
   });
 
-  test('should be added to the DOM', () => {
-    expect(soundButton).not.toBeNull();
-    expect(document.querySelector('sound-button')).not.toBeNull();
+  test('renders with default attributes', () => {
+    const button = document.createElement('sound-button');
+    document.body.appendChild(button);
+
+    expect(button.getAttribute('sound-name')).toBe('Unnamed Sound');
+    expect(button.getAttribute('sound-id')).toBe('');
   });
 
-  // TODO: Add more tests for attributes, event dispatching, ARIA states
+  test('renders with provided attributes', () => {
+    const button = document.createElement('sound-button');
+    button.setAttribute('sound-name', 'Rain');
+    button.setAttribute('sound-id', 'rain');
+    document.body.appendChild(button);
+
+    expect(button.shadowRoot.querySelector('button').textContent).toBe('Rain');
+    expect(button.getAttribute('sound-id')).toBe('rain');
+    expect(button.shadowRoot.querySelector('button').getAttribute('aria-label')).toBe('Play Rain');
+  });
+
+  test('dispatches soundbutton-clicked event on click', () => {
+    const button = document.createElement('sound-button');
+    button.setAttribute('sound-id', 'rain');
+    document.body.appendChild(button);
+
+    const mockCallback = jest.fn();
+    button.addEventListener('soundbutton-clicked', mockCallback);
+
+    button.shadowRoot.querySelector('button').click();
+
+    expect(mockCallback).toHaveBeenCalled();
+    expect(mockCallback.mock.calls[0][0].detail).toEqual({ soundId: 'rain' });
+  });
+
+  test('reflects playing state', () => {
+    const button = document.createElement('sound-button');
+    document.body.appendChild(button);
+
+    button.playing = true;
+    expect(button.hasAttribute('playing')).toBe(true);
+    expect(button.shadowRoot.querySelector('button').getAttribute('aria-pressed')).toBe('true');
+
+    button.playing = false;
+    expect(button.hasAttribute('playing')).toBe(false);
+    expect(button.shadowRoot.querySelector('button').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('reflects selected state', () => {
+    const button = document.createElement('sound-button');
+    document.body.appendChild(button);
+
+    button.selected = true;
+    expect(button.hasAttribute('selected')).toBe(true);
+
+    button.selected = false;
+    expect(button.hasAttribute('selected')).toBe(false);
+  });
 });

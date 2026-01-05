@@ -63,6 +63,38 @@ export class AudioController {
     }
 
     /**
+     * Helper to fetch with retries.
+     * @param {string} url - The URL to fetch.
+     * @param {number} [retries=3] - Number of retries.
+     * @param {number} [backoff=1000] - Initial backoff delay in ms.
+     * @returns {Promise<Response>}
+     * @private
+     */
+    async _fetchWithRetry(url, retries = 3, backoff = 1000) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                // If 404, do not retry
+                if (response.status === 404) throw new Error(`HTTP 404 Not Found: ${url}`);
+                // Throw error to trigger catch block for retry logic
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            // Do not retry 404s
+            if (error.message.includes('404')) {
+                throw error;
+            }
+            if (retries > 0) {
+                console.warn(`Fetch failed for ${url}. Retrying in ${backoff}ms... (${retries} attempts left). Error: ${error.message}`);
+                await new Promise(resolve => setTimeout(resolve, backoff));
+                return this._fetchWithRetry(url, retries - 1, backoff * 2);
+            }
+            throw error;
+        }
+    }
+
+    /**
      * Loads a single audio file, decodes it, and stores the buffer.
      * Attempts to load from a fallback path if the primary path fails.
      * Dispatches 'loading', 'loaded', or 'error' events.
@@ -103,11 +135,7 @@ export class AudioController {
         console.log(`Loading ${sound.name} from ${path}...`);
 
         try {
-            const response = await fetch(path);
-            console.log('response', response);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status} while fetching ${path}`);
-            }
+            const response = await this._fetchWithRetry(path);
             const arrayBuffer = await response.arrayBuffer();
             const decodedBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             sound.audioBuffer = decodedBuffer;
