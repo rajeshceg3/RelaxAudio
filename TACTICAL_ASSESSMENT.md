@@ -13,9 +13,9 @@ The `ambient-sound-player` repository is a Single Page Application (SPA) utilizi
 
 **Current Status:**
 *   **Architecture:** Solid. Web Components provide good encapsulation.
-*   **Code Quality:** Base linting exists. Tests are present but lack depth.
-*   **UX/UI:** Mobile-first approach is visible. Basic A11y (ARIA) is implemented.
-*   **Security:** Minimal surface area, but lacks defensive headers.
+*   **Code Quality:** Base linting exists. Tests are present but lack depth (Happy path coverage mostly).
+*   **UX/UI:** Mobile-first approach is visible. Basic A11y (ARIA) is implemented. Mobile min-height (64px) is respected.
+*   **Security:** Minimal surface area, but lacks defensive headers (CSP). Vulnerabilities detected in dependencies.
 *   **Performance:** Basic service worker present. Preloading strategy is aggressive (potentially wasteful).
 
 ---
@@ -47,9 +47,9 @@ The `ambient-sound-player` repository is a Single Page Application (SPA) utilizi
 ### PHASE 1: SECURITY & STABILITY (IMMEDIATE ACTION)
 *Objective: Fortify the base. Eliminate critical failure points.*
 
-1.  **Strict Error Handling:** Implement retry logic in `AudioController` for network failures.
+1.  **Strict Error Handling:** Implement retry logic in `AudioController` for network failures (Exponential Backoff).
 2.  **CSP Implementation:** Add strict `Content-Security-Policy` meta tag to `index.html`.
-3.  **Dependency Audit:** Run `npm audit` and fix vulnerabilities.
+3.  **Dependency Audit:** Fix known vulnerabilities.
 
 ### PHASE 2: TACTICAL TESTING (QUALITY ASSURANCE)
 *Objective: Ensure absolute reliability under fire.*
