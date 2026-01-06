@@ -103,6 +103,13 @@ export class VolumeSlider extends HTMLElement {
         input[type="range"]:focus::-ms-thumb { /* IE uses :focus, not :focus-visible for this */
             box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4); /* May need different styling or might not be fully supported */
         }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+          input[type="range"] {
+            transition: none !important;
+          }
+        }
       </style>
       <input type="range" aria-label="Volume control">
     `;
