@@ -316,6 +316,17 @@ export class SoundscapePlayer extends HTMLElement {
 
     // Centralized state updates based on status
     switch (status) {
+        case 'loading':
+             // If we know which sound is loading, we can set a loading state on it?
+             // But _updateAllButtonStates needs to know about loading.
+             // We can track loading state in a separate map or just rely on AudioController events?
+             // AudioController.loadingStates exists.
+             // But for UI responsiveness, let's trigger a re-render or let the loop handle it.
+             // We'll update the button states.
+             break;
+        case 'loaded':
+             // Sound loaded.
+             break;
         case 'playing':
         case 'resumed':
             this._currentSoundId = soundId;
@@ -362,8 +373,11 @@ _updateAllButtonStates() {
     buttons.forEach(button => {
         const id = button.getAttribute('sound-id');
         const isSelected = id === this._currentSoundId;
+        const isLoading = this.audioController && this.audioController.loadingStates && this.audioController.loadingStates[id];
+
         button.selected = isSelected;
         button.playing = isSelected && this._isSoundPlaying;
+        button.loading = isLoading;
     });
 }
 

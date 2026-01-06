@@ -63,7 +63,7 @@ export class AudioController {
     }
 
     /**
-     * Helper to fetch with retries.
+     * Helper to fetch with retries (Exponential Backoff).
      * @param {string} url - The URL to fetch.
      * @param {number} [retries=3] - Number of retries.
      * @param {number} [backoff=1000] - Initial backoff delay in ms.
@@ -424,6 +424,15 @@ export class AudioController {
             name: sound.name,
             isPlaying: this.isPlaying,
         };
+    }
+
+    /**
+     * Gets the loading state for a specific sound.
+     * @param {string} soundId - The sound ID.
+     * @returns {boolean} True if loading, false otherwise.
+     */
+    isSoundLoading(soundId) {
+        return !!this.loadingStates[soundId];
     }
 
     /**

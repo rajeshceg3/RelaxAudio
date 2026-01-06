@@ -62,6 +62,21 @@ export class SoundButton extends HTMLElement {
           outline: none; /* Remove default outline */
           box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4); /* Custom focus ring */
         }
+
+        /* Loading State */
+        :host([loading]) button {
+          cursor: wait;
+          opacity: 0.7;
+          position: relative; /* For pseudo-element positioning if added later */
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+          button {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
       </style>
       <button></button>
     `;
@@ -70,7 +85,7 @@ export class SoundButton extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['sound-id', 'sound-name', 'selected', 'playing'];
+    return ['sound-id', 'sound-name', 'selected', 'playing', 'loading'];
   }
 
   connectedCallback() {
@@ -98,6 +113,7 @@ export class SoundButton extends HTMLElement {
     // Set initial states
     this._updateSelectedState();
     this._updatePlayingState();
+    this._updateLoadingState();
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -112,6 +128,9 @@ export class SoundButton extends HTMLElement {
         break;
       case 'playing':
         this._updatePlayingState();
+        break;
+      case 'loading':
+        this._updateLoadingState();
         break;
     }
   }
@@ -149,6 +168,25 @@ export class SoundButton extends HTMLElement {
   _updatePlayingState() {
     this._button.setAttribute('aria-pressed', this.playing ? 'true' : 'false');
     // The visual change (bold font weight) is now handled by the CSS selector :host([playing]) button.
-    // No direct style manipulation is needed here.
+  }
+
+  get loading() {
+    return this.hasAttribute('loading');
+  }
+
+  set loading(isLoading) {
+    if (isLoading) {
+      this.setAttribute('loading', '');
+    } else {
+      this.removeAttribute('loading');
+    }
+  }
+
+  _updateLoadingState() {
+    if (this.loading) {
+      this._button.setAttribute('aria-busy', 'true');
+    } else {
+      this._button.setAttribute('aria-busy', 'false');
+    }
   }
 }
