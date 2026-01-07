@@ -8,8 +8,12 @@ const ASSETS_TO_CACHE = [
   '/src/js/components/SoundButton.js',
   '/src/js/components/VolumeSlider.js',
   '/src/js/audio/AudioController.js',
-  '/manifest.json'
-  // Audio files are large and usually cached by browser, but can be added here if critical
+  '/manifest.json',
+  '/assets/audio/heavy-rain.mp3',
+  '/assets/audio/ocean-waves.mp3',
+  '/assets/audio/strong-wind.mp3',
+  '/assets/audio/forest-ambience.mp3',
+  '/assets/audio/fireplace-crackling.mp3'
 ];
 
 self.addEventListener('install', (event) => {

@@ -93,7 +93,6 @@ describe('AudioController', () => {
         jest.useFakeTimers();
         try {
             const soundId = 'rain';
-            const url = audioController.sounds[soundId].filePath;
 
             global.fetch = jest.fn()
                 .mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }))

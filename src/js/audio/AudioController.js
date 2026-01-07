@@ -261,9 +261,9 @@ export class AudioController {
                 if (oldGain) {
                     try {
                         oldGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.1);
-                    } catch (e) { /* ignore */ }
+                    } catch (_e) { /* ignore */ }
                 }
-                try { oldSource.stop(this.audioContext.currentTime + 0.1); } catch (e) { /* ignore */ }
+                try { oldSource.stop(this.audioContext.currentTime + 0.1); } catch (_e) { /* ignore */ }
 
                 this.sounds[oldSoundId].sourceNode = null;
                 this.sounds[oldSoundId].gainNode = null;
@@ -274,9 +274,9 @@ export class AudioController {
                  if (oldGain) {
                     try {
                         oldGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + FADE_DURATION);
-                    } catch (e) { /* ignore */ }
+                    } catch (_e) { /* ignore */ }
                 }
-                try { oldSource.stop(this.audioContext.currentTime + FADE_DURATION); } catch (e) { /* ignore */ }
+                try { oldSource.stop(this.audioContext.currentTime + FADE_DURATION); } catch (_e) { /* ignore */ }
 
                 this.sounds[oldSoundId].sourceNode = null;
                 this.sounds[oldSoundId].gainNode = null;
