@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Any application-wide setup that isn't part of SoundscapePlayer
     // could go here. For now, it's mainly about defining the elements.
 
-    console.log('Soundscape application initialized and custom elements defined.');
+    // console.log('Soundscape application initialized and custom elements defined.');
 
     // Potential future global error handling or setup:
     // For instance, if SoundscapePlayer fails to initialize AudioController
@@ -39,11 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/service-worker.js')
-                .then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                .then(_registration => {
+                    // console.log('ServiceWorker registration successful with scope: ', registration.scope);
                 })
                 .catch(err => {
-                    console.log('ServiceWorker registration failed: ', err);
+                    console.error('ServiceWorker registration failed: ', err);
                 });
         });
     }
