@@ -132,14 +132,14 @@ export class AudioController {
         if (!useFallback) {
             this._dispatchEvent('loading', soundId);
         }
-        // console.log(`Loading ${sound.name} from ${path}...`);
+        // console.log(`Loading ${sound.name} from ${path}...`); // REMOVED FOR PRODUCTION
 
         try {
             const response = await this._fetchWithRetry(path);
             const arrayBuffer = await response.arrayBuffer();
             const decodedBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             sound.audioBuffer = decodedBuffer;
-            // console.log(`Successfully loaded and decoded ${sound.name} from ${path}`);
+            // console.log(`Successfully loaded and decoded ${sound.name} from ${path}`); // REMOVED FOR PRODUCTION
             this._dispatchEvent('loaded', soundId);
             return sound.audioBuffer;
         } catch (error) {
@@ -166,7 +166,7 @@ export class AudioController {
      * @returns {Promise<{success: boolean, loadedCount: number}>} An object indicating if preloading was generally successful and how many sounds were loaded.
      */
     async preloadAllSounds() {
-        // console.log("Starting preloading for all sounds marked for preload...");
+        // console.log("Starting preloading for all sounds marked for preload..."); // REMOVED FOR PRODUCTION
         const preloadPromises = [];
         for (const soundId in this.sounds) {
             const sound = this.sounds[soundId];
@@ -182,7 +182,7 @@ export class AudioController {
             const results = await Promise.all(preloadPromises);
             const successfulLoads = results.filter(buffer => buffer !== null).length;
             // const failedLoads = results.length - successfulLoads; // Not directly used, but good for logging
-            // console.log(`${successfulLoads} sounds successfully preloaded.`);
+            // console.log(`${successfulLoads} sounds successfully preloaded.`); // REMOVED FOR PRODUCTION
 
             if (successfulLoads === 0 && Object.keys(this.sounds).filter(id => this.sounds[id].preload).length > 0) {
                 this._dispatchEvent('error', null, 'Failed to load any sounds. Please try again.');
@@ -212,7 +212,7 @@ export class AudioController {
             return;
         }
 
-        // console.log(`Request to play sound: ${soundId}. Current context state: ${this.audioContext.state}`);
+        // console.log(`Request to play sound: ${soundId}. Current context state: ${this.audioContext.state}`); // REMOVED FOR PRODUCTION
 
         const startPlayback = () => {
             if (this.audioContext.state === 'running') {
@@ -224,10 +224,10 @@ export class AudioController {
         };
 
         if (this.audioContext.state === 'suspended') {
-            // console.log("AudioContext is suspended. Attempting to resume...");
+            // console.log("AudioContext is suspended. Attempting to resume..."); // REMOVED FOR PRODUCTION
             this.audioContext.resume()
                 .then(() => {
-                    // console.log("AudioContext resumed successfully.");
+                    // console.log("AudioContext resumed successfully."); // REMOVED FOR PRODUCTION
                     startPlayback();
                 })
                 .catch(err => {
@@ -255,7 +255,7 @@ export class AudioController {
             const oldGain = this.sounds[oldSoundId].gainNode;
 
             if (oldSoundId === soundId) {
-                // console.log(`Sound ${soundToPlay.name} is already current. Restarting.`);
+                // console.log(`Sound ${soundToPlay.name} is already current. Restarting.`); // REMOVED FOR PRODUCTION
                 // For restart, maybe a quick crossfade or just stop and start
                 // Let's fade out the old one
                 if (oldGain) {
@@ -269,7 +269,7 @@ export class AudioController {
                 this.sounds[oldSoundId].gainNode = null;
                 this._dispatchEvent('stopped', oldSoundId);
             } else {
-                // console.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`);
+                // console.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`); // REMOVED FOR PRODUCTION
                 // Crossfade: Fade out old sound
                  if (oldGain) {
                     try {
@@ -366,10 +366,10 @@ export class AudioController {
      */
     resume() {
         if (this.currentSoundId && this.audioContext.state === 'suspended') {
-            // console.log(`Attempting to resume AudioContext for ${this.sounds[this.currentSoundId].name}...`);
+            // console.log(`Attempting to resume AudioContext for ${this.sounds[this.currentSoundId].name}...`); // REMOVED FOR PRODUCTION
             this.audioContext.resume()
                 .then(() => {
-                    // console.log('AudioContext resumed. Re-playing sound.');
+                    // console.log('AudioContext resumed. Re-playing sound.'); // REMOVED FOR PRODUCTION
                     // Don't just resume context, but re-trigger play to ensure a fresh source node.
                     // _playInternal will dispatch 'playing', but we also want 'resumed' for the UI/Tests
                      this._playInternal(this.currentSoundId).then(() => {
@@ -383,7 +383,7 @@ export class AudioController {
         } else if (this.audioContext.state === 'suspended') {
             // If no sound is active, just resume the context for future plays.
             this.audioContext.resume()
-            //    .then(() => console.log("AudioContext resumed generally."))
+            //    .then(() => console.log("AudioContext resumed generally.")) // REMOVED FOR PRODUCTION
                .catch(err => console.error("Error resuming general AudioContext:", err));
         }
     }
