@@ -66,8 +66,28 @@ export class SoundButton extends HTMLElement {
         /* Loading State */
         :host([loading]) button {
           cursor: wait;
-          opacity: 0.7;
-          position: relative; /* For pseudo-element positioning if added later */
+          opacity: 0.8;
+          position: relative;
+          color: transparent; /* Hide text while spinner is shown */
+        }
+
+        :host([loading]) button::after {
+          content: "";
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          top: 50%;
+          left: 50%;
+          margin-top: -12px;
+          margin-left: -12px;
+          border: 3px solid #2C3E50;
+          border-top-color: transparent;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         /* Reduced Motion */

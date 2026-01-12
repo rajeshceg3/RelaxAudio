@@ -3,6 +3,8 @@
 import { SoundButton } from './components/SoundButton.js';
 import { VolumeSlider } from './components/VolumeSlider.js';
 import { SoundscapePlayer } from './components/SoundscapePlayer.js';
+import './components/ToastNotification.js'; // Import for side-effects (custom element definition)
+import { Logger } from './utils/Logger.js';
 // AudioController is now instantiated and managed by SoundscapePlayer.
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
         customElements.define('soundscape-player', SoundscapePlayer);
     }
 
+    // Instantiate Toast System
+    let toast = document.querySelector('toast-notification');
+    if (!toast) {
+        toast = document.createElement('toast-notification');
+        document.body.appendChild(toast);
+    }
+
+    // Global Event Listener for Audio State Changes to trigger Toasts
+    document.addEventListener('audiostatechange', (e) => {
+        const { status, message } = e.detail;
+        if (status === 'error') {
+            toast.show(message || 'An error occurred', 'error');
+        } else if (status === 'unsupported') {
+            toast.show(message, 'error', 0); // 0 duration = sticky
+        }
+    });
+
     // The SoundscapePlayer element is already in index.html.
     // Its connectedCallback will handle its internal setup, including
     // AudioController instantiation, sound loading, and event listeners.
@@ -26,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Any application-wide setup that isn't part of SoundscapePlayer
     // could go here. For now, it's mainly about defining the elements.
 
-    // console.log('Soundscape application initialized and custom elements defined.');
+    Logger.log('Soundscape application initialized and custom elements defined.');
 
     // Potential future global error handling or setup:
     // For instance, if SoundscapePlayer fails to initialize AudioController
@@ -39,11 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/service-worker.js')
-                .then(_registration => {
-                    // console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                .then(registration => {
+                    Logger.log('ServiceWorker registration successful with scope: ', registration.scope);
                 })
                 .catch(err => {
-                    console.error('ServiceWorker registration failed: ', err);
+                    Logger.error('ServiceWorker registration failed: ', err);
                 });
         });
     }
