@@ -1,4 +1,6 @@
 // src/js/audio/AudioController.js
+import { Logger } from '../utils/Logger.js';
+
 /**
  * Manages all Web Audio API logic, sound loading, playback controls, and volume.
  */
@@ -32,7 +34,7 @@ export class AudioController {
             this.masterGainNode = this.audioContext.createGain();
             this.masterGainNode.connect(this.audioContext.destination);
         } catch (e) {
-            console.error("Web Audio API is not supported.", e);
+            Logger.error("Web Audio API is not supported.", e);
             this._dispatchEvent('unsupported', null, "Audio playback not supported by this browser.");
             throw new Error("Web Audio API not supported");
         }
@@ -86,7 +88,7 @@ export class AudioController {
                 throw error;
             }
             if (retries > 0) {
-                console.warn(`Fetch failed for ${url}. Retrying in ${backoff}ms... (${retries} attempts left). Error: ${error.message}`);
+                Logger.warn(`Fetch failed for ${url}. Retrying in ${backoff}ms... (${retries} attempts left). Error: ${error.message}`);
                 await new Promise(resolve => setTimeout(resolve, backoff));
                 return this._fetchWithRetry(url, retries - 1, backoff * 2);
             }
@@ -106,7 +108,7 @@ export class AudioController {
     async _loadSingleSound(soundId, useFallback = false) {
         const sound = this.sounds[soundId];
         if (!sound) {
-            console.error(`Unknown sound ID: ${soundId}`);
+            Logger.error(`Unknown sound ID: ${soundId}`);
             this._dispatchEvent('error', soundId, `Unknown sound ID: ${soundId}`);
             throw new Error(`Unknown sound ID: ${soundId}`);
         }
@@ -120,7 +122,7 @@ export class AudioController {
 
         // If no path, and not already trying a fallback, try the fallback path.
         if (!path && !useFallback && sound.fallbackPath) {
-            console.warn(`No primary path for ${sound.name}. Attempting fallback.`);
+            Logger.warn(`No primary path for ${sound.name}. Attempting fallback.`);
             return await this._loadSingleSound(soundId, true);
         } else if (!path) {
             const errMessage = `No valid file path for ${sound.name}.`;
@@ -132,23 +134,23 @@ export class AudioController {
         if (!useFallback) {
             this._dispatchEvent('loading', soundId);
         }
-        // console.log(`Loading ${sound.name} from ${path}...`); // REMOVED FOR PRODUCTION
+        Logger.log(`Loading ${sound.name} from ${path}...`);
 
         try {
             const response = await this._fetchWithRetry(path);
             const arrayBuffer = await response.arrayBuffer();
             const decodedBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             sound.audioBuffer = decodedBuffer;
-            // console.log(`Successfully loaded and decoded ${sound.name} from ${path}`); // REMOVED FOR PRODUCTION
+            Logger.log(`Successfully loaded and decoded ${sound.name} from ${path}`);
             this._dispatchEvent('loaded', soundId);
             return sound.audioBuffer;
         } catch (error) {
-            console.error(`Error loading sound ${sound.name} from ${path}:`, error);
+            Logger.error(`Error loading sound ${sound.name} from ${path}:`, error);
             sound.audioBuffer = null; // Clear buffer on error
 
             // If the primary path failed and a fallback exists, try it.
             if (!useFallback && sound.fallbackPath) {
-                console.warn(`Primary path failed for ${sound.name}. Attempting fallback.`);
+                Logger.warn(`Primary path failed for ${sound.name}. Attempting fallback.`);
                 return await this._loadSingleSound(soundId, true);
             }
 
@@ -166,13 +168,13 @@ export class AudioController {
      * @returns {Promise<{success: boolean, loadedCount: number}>} An object indicating if preloading was generally successful and how many sounds were loaded.
      */
     async preloadAllSounds() {
-        // console.log("Starting preloading for all sounds marked for preload..."); // REMOVED FOR PRODUCTION
+        Logger.log("Starting preloading for all sounds marked for preload...");
         const preloadPromises = [];
         for (const soundId in this.sounds) {
             const sound = this.sounds[soundId];
             if (sound.preload && !sound.audioBuffer) {
                 preloadPromises.push(this._loadSingleSound(soundId).catch(e => {
-                    console.error(`Preloading failed for ${sound.name}: ${e.message}`);
+                    Logger.error(`Preloading failed for ${sound.name}: ${e.message}`);
                     return null;
                 }));
             }
@@ -182,7 +184,7 @@ export class AudioController {
             const results = await Promise.all(preloadPromises);
             const successfulLoads = results.filter(buffer => buffer !== null).length;
             // const failedLoads = results.length - successfulLoads; // Not directly used, but good for logging
-            // console.log(`${successfulLoads} sounds successfully preloaded.`); // REMOVED FOR PRODUCTION
+            Logger.log(`${successfulLoads} sounds successfully preloaded.`);
 
             if (successfulLoads === 0 && Object.keys(this.sounds).filter(id => this.sounds[id].preload).length > 0) {
                 this._dispatchEvent('error', null, 'Failed to load any sounds. Please try again.');
@@ -191,7 +193,7 @@ export class AudioController {
             this._dispatchEvent('info', null, 'Sound preloading complete.');
             return { success: true, loadedCount: successfulLoads };
         } catch (error) {
-            console.error("Error during preloading sounds:", error);
+            Logger.error("Error during preloading sounds:", error);
             this._dispatchEvent('error', null, 'Critical error during sound preloading.');
             return { success: false, loadedCount: 0 };
         }
@@ -207,31 +209,31 @@ export class AudioController {
      */
     play(soundId) {
         if (!this.sounds[soundId]) {
-            console.error(`Sound ID ${soundId} not found.`);
+            Logger.error(`Sound ID ${soundId} not found.`);
             this._dispatchEvent('error', soundId, `Sound ID ${soundId} not found.`);
             return;
         }
 
-        // console.log(`Request to play sound: ${soundId}. Current context state: ${this.audioContext.state}`); // REMOVED FOR PRODUCTION
+        Logger.log(`Request to play sound: ${soundId}. Current context state: ${this.audioContext.state}`);
 
         const startPlayback = () => {
             if (this.audioContext.state === 'running') {
                 this._playInternal(soundId);
             } else {
-                console.warn(`AudioContext not running when trying to play ${soundId}. State: ${this.audioContext.state}`);
+                Logger.warn(`AudioContext not running when trying to play ${soundId}. State: ${this.audioContext.state}`);
                 this._dispatchEvent('error', soundId, `Audio system not ready. Please interact with the page and try again.`);
             }
         };
 
         if (this.audioContext.state === 'suspended') {
-            // console.log("AudioContext is suspended. Attempting to resume..."); // REMOVED FOR PRODUCTION
+            Logger.log("AudioContext is suspended. Attempting to resume...");
             this.audioContext.resume()
                 .then(() => {
-                    // console.log("AudioContext resumed successfully."); // REMOVED FOR PRODUCTION
+                    Logger.log("AudioContext resumed successfully.");
                     startPlayback();
                 })
                 .catch(err => {
-                    console.error("Error resuming AudioContext:", err);
+                    Logger.error("Error resuming AudioContext:", err);
                     this._dispatchEvent('error', soundId, "Could not resume audio. Please interact with the page.");
                 });
         } else {
@@ -255,7 +257,7 @@ export class AudioController {
             const oldGain = this.sounds[oldSoundId].gainNode;
 
             if (oldSoundId === soundId) {
-                // console.log(`Sound ${soundToPlay.name} is already current. Restarting.`); // REMOVED FOR PRODUCTION
+                Logger.log(`Sound ${soundToPlay.name} is already current. Restarting.`);
                 // For restart, maybe a quick crossfade or just stop and start
                 // Let's fade out the old one
                 if (oldGain) {
@@ -269,7 +271,7 @@ export class AudioController {
                 this.sounds[oldSoundId].gainNode = null;
                 this._dispatchEvent('stopped', oldSoundId);
             } else {
-                // console.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`); // REMOVED FOR PRODUCTION
+                Logger.log(`Switching from ${this.sounds[oldSoundId].name} to ${soundToPlay.name}.`);
                 // Crossfade: Fade out old sound
                  if (oldGain) {
                     try {
@@ -294,7 +296,7 @@ export class AudioController {
         }
 
         if (this.audioContext.state !== 'running') {
-            console.warn(`AudioContext not running when trying to start source for ${soundToPlay.name}. Playback aborted.`);
+            Logger.warn(`AudioContext not running when trying to start source for ${soundToPlay.name}. Playback aborted.`);
             this._dispatchEvent('error', soundId, `Audio system not ready. Try again.`);
             this.currentSoundId = null;
             return;
@@ -323,7 +325,7 @@ export class AudioController {
             this.isPlaying = true;
             this._dispatchEvent('playing', this.currentSoundId);
         } catch (e) {
-            console.error(`Error starting source node for ${soundToPlay.name}:`, e);
+            Logger.error(`Error starting source node for ${soundToPlay.name}:`, e);
             this._dispatchEvent('error', soundId, `Error playing ${soundToPlay.name}.`);
             this.currentSoundId = null;
             this.isPlaying = false;
@@ -351,11 +353,11 @@ export class AudioController {
                         this._dispatchEvent('paused', this.currentSoundId);
                     })
                     .catch(err => {
-                        console.error("Error suspending AudioContext:", err);
+                        Logger.error("Error suspending AudioContext:", err);
                         this._dispatchEvent('error', this.currentSoundId, "Error pausing sound.");
                     });
             } else {
-                console.warn(`Cannot pause: AudioContext is not in a running state (current: ${this.audioContext.state}).`);
+                Logger.warn(`Cannot pause: AudioContext is not in a running state (current: ${this.audioContext.state}).`);
             }
         }
     }
@@ -366,10 +368,10 @@ export class AudioController {
      */
     resume() {
         if (this.currentSoundId && this.audioContext.state === 'suspended') {
-            // console.log(`Attempting to resume AudioContext for ${this.sounds[this.currentSoundId].name}...`); // REMOVED FOR PRODUCTION
+            Logger.log(`Attempting to resume AudioContext for ${this.sounds[this.currentSoundId].name}...`);
             this.audioContext.resume()
                 .then(() => {
-                    // console.log('AudioContext resumed. Re-playing sound.'); // REMOVED FOR PRODUCTION
+                    Logger.log('AudioContext resumed. Re-playing sound.');
                     // Don't just resume context, but re-trigger play to ensure a fresh source node.
                     // _playInternal will dispatch 'playing', but we also want 'resumed' for the UI/Tests
                      this._playInternal(this.currentSoundId).then(() => {
@@ -377,14 +379,14 @@ export class AudioController {
                      });
                 })
                 .catch(err => {
-                    console.error("Error resuming AudioContext:", err);
+                    Logger.error("Error resuming AudioContext:", err);
                     this._dispatchEvent('error', this.currentSoundId, "Error resuming sound.");
                 });
         } else if (this.audioContext.state === 'suspended') {
             // If no sound is active, just resume the context for future plays.
             this.audioContext.resume()
-            //    .then(() => console.log("AudioContext resumed generally.")) // REMOVED FOR PRODUCTION
-               .catch(err => console.error("Error resuming general AudioContext:", err));
+               .then(() => Logger.log("AudioContext resumed generally."))
+               .catch(err => Logger.error("Error resuming general AudioContext:", err));
         }
     }
 
@@ -397,7 +399,7 @@ export class AudioController {
         if (this.masterGainNode && this.audioContext) {
             const parsedValue = parseFloat(rawValue);
             if (isNaN(parsedValue)) {
-                console.warn("Invalid volume value received:", rawValue);
+                Logger.warn("Invalid volume value received:", rawValue);
                 return;
             }
             const clampedValue = Math.max(0, Math.min(1, parsedValue));
@@ -406,7 +408,7 @@ export class AudioController {
             try {
                 this.masterGainNode.gain.linearRampToValueAtTime(exponentialValue, this.audioContext.currentTime + 0.02);
             } catch (e) {
-                console.warn("linearRampToValueAtTime failed, setting value directly:", e);
+                Logger.warn("linearRampToValueAtTime failed, setting value directly:", e);
                 this.masterGainNode.gain.value = exponentialValue;
             }
         }
