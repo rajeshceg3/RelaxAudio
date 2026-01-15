@@ -161,18 +161,25 @@ export class SoundscapePlayer extends HTMLElement {
       return; // Stop further initialization if audio controller fails.
     }
 
-    this._populateSoundButtons();
-    this._setupEventListeners();
-    this._loadInitialVolume();
-    this._updateStatus('Soundscape ready. Select a sound to play.');
+    this._initAudioSystem();
+  }
 
-    // Preload sounds
-    // Use preloadAllSounds as specified
-    this.audioController.preloadAllSounds().catch(error => {
-        // This catch is for unexpected errors during the preloadAllSounds execution itself.
-        // Specific sound load errors are handled via events.
-        this._handleCriticalError(`A critical error occurred while preloading sounds: ${error.message}`);
-    });
+  async _initAudioSystem() {
+    this._updateStatus('Initializing system...');
+    try {
+        await this.audioController.loadConfig();
+        this._populateSoundButtons();
+        this._setupEventListeners();
+        this._loadInitialVolume();
+        this._updateStatus('Soundscape ready. Select a sound to play.');
+
+        // Preload sounds
+        this.audioController.preloadAllSounds().catch(error => {
+            this._handleCriticalError(`A critical error occurred while preloading sounds: ${error.message}`);
+        });
+    } catch (_error) {
+        this._handleCriticalError('Failed to load sound configuration. Please refresh.');
+    }
   }
 
   disconnectedCallback() {

@@ -17,6 +17,7 @@ jest.mock('../../audio/AudioController.js', () => {
         setVolume: jest.fn(),
         isApiSupported: jest.fn().mockReturnValue(true),
         getCurrentSoundInfo: jest.fn().mockReturnValue(null),
+        loadConfig: jest.fn().mockResolvedValue(),
       };
     })
   };
@@ -59,7 +60,7 @@ describe('SoundscapePlayer Component', () => {
   let soundscapePlayer;
   let mockAudioControllerInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear mocks
     jest.clearAllMocks();
 
@@ -70,6 +71,9 @@ describe('SoundscapePlayer Component', () => {
     // Get the instance created by SoundscapePlayer directly
     // This is more reliable than checking mock.instances
     mockAudioControllerInstance = soundscapePlayer.audioController;
+
+    // Wait for the async initialization (_initAudioSystem -> loadConfig) to complete
+    await Promise.resolve();
   });
 
   afterEach(() => {

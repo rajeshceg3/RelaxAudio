@@ -13,15 +13,7 @@ export class AudioController {
         this.audioContext = null;
         this.masterGainNode = null;
         /** @type {Object.<string, SoundDefinition>} */
-        this.sounds = {
-
-            rain: { id: 'rain', name: 'Heavy Rain', filePath: 'assets/audio/heavy-rain.mp3', fallbackPath: 'assets/audio/heavy-rain.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            ocean: { id: 'ocean', name: 'Ocean Waves', filePath: 'assets/audio/ocean-waves.mp3', fallbackPath: 'assets/audio/ocean-waves.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            wind: { id: 'wind', name: 'Strong Wind', filePath: 'assets/audio/strong-wind.mp3', fallbackPath: 'assets/audio/strong-wind.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            forest: { id: 'forest', name: 'Forest Ambience', filePath: 'assets/audio/forest-ambience.mp3', fallbackPath: 'assets/audio/forest-ambience.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-            fireplace: { id: 'fireplace', name: 'Crackling Fireplace', filePath: 'assets/audio/fireplace-crackling.mp3', fallbackPath: 'assets/audio/fireplace-crackling.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
-
-        };
+        this.sounds = {};
         /** @type {string|null} */
         this.currentSoundId = null;
         /** @type {boolean} */
@@ -37,6 +29,35 @@ export class AudioController {
             Logger.error("Web Audio API is not supported.", e);
             this._dispatchEvent('unsupported', null, "Audio playback not supported by this browser.");
             throw new Error("Web Audio API not supported");
+        }
+    }
+
+    /**
+     * Loads the sound configuration from an external JSON file.
+     * @param {string} [path='/sounds.json'] - Path to the JSON configuration file.
+     * @returns {Promise<void>}
+     */
+    async loadConfig(path = '/sounds.json') {
+        try {
+            const response = await this._fetchWithRetry(path);
+            const data = await response.json();
+
+            // Hydrate the configuration with runtime properties
+            this.sounds = {};
+            Object.keys(data).forEach(key => {
+                this.sounds[key] = {
+                    ...data[key],
+                    audioBuffer: null,
+                    sourceNode: null,
+                    gainNode: null
+                };
+            });
+            Logger.log(`Sound configuration loaded from ${path}`);
+            this._dispatchEvent('config_loaded', null, 'Sound configuration loaded.');
+        } catch (error) {
+            Logger.error(`Failed to load sound configuration from ${path}:`, error);
+            this._dispatchEvent('error', null, 'Failed to load sound configuration.');
+            throw error;
         }
     }
 
