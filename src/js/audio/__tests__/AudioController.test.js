@@ -177,5 +177,61 @@ describe('AudioController', () => {
       audioController.setVolume(0.5);
       expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalled();
     });
+
+    test('toggleMute should mute and unmute audio, restoring previous volume', () => {
+      // 1. Initial State: Volume 1.0 (default), Not Muted
+      expect(audioController.isMuted).toBe(false);
+      expect(audioController.previousVolume).toBe(1.0);
+
+      // 2. Mute
+      audioController.toggleMute();
+      expect(audioController.isMuted).toBe(true);
+      expect(audioController.previousVolume).toBe(1.0); // Should remember 1.0
+      // Should set gain to 0
+      expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, expect.any(Number));
+
+      // 3. Unmute
+      audioController.toggleMute();
+      expect(audioController.isMuted).toBe(false);
+      // Should restore gain to 1.0
+      expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(1.0, expect.any(Number));
+    });
+
+    test('toggleMute should remember set volume', () => {
+        // 1. Set volume to 0.5
+        audioController.setVolume(0.5);
+        expect(audioController.previousVolume).toBe(0.5);
+
+        // 2. Mute
+        audioController.toggleMute();
+        expect(audioController.isMuted).toBe(true);
+        expect(audioController.previousVolume).toBe(0.5);
+        expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, expect.any(Number));
+
+        // 3. Unmute
+        audioController.toggleMute();
+        expect(audioController.isMuted).toBe(false);
+        // Note: The implementation uses Math.pow(val, 2) for exponential volume
+        expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.25, expect.any(Number));
+    });
+
+    test('setVolume should update previousVolume while muted', () => {
+        // 1. Mute
+        audioController.toggleMute();
+        expect(audioController.isMuted).toBe(true);
+
+        // 2. Change volume while muted (e.g. slider interaction)
+        audioController.setVolume(0.8);
+
+        // Should update the stored volume but keep actual gain at 0
+        expect(audioController.previousVolume).toBe(0.8);
+        // During mute toggle, we applied volume 0 (called with 0)
+        // When setting volume while muted, we expect no calls to applyVolume (handled in setVolume)
+
+        // 3. Unmute
+        audioController.toggleMute();
+        // 0.8 * 0.8 = 0.64
+        expect(audioController.masterGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.6400000000000001, expect.any(Number));
+    });
    });
 });

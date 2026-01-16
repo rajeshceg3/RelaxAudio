@@ -18,6 +18,10 @@ export class AudioController {
         this.currentSoundId = null;
         /** @type {boolean} */
         this.isPlaying = false;
+        /** @type {boolean} */
+        this.isMuted = false;
+        /** @type {number} */
+        this.previousVolume = 1.0; // Stores volume before mute
         /** @type {Object.<string, boolean>} */
         this.loadingStates = {};
 
@@ -414,18 +418,36 @@ export class AudioController {
     /**
      * Sets the master volume for audio playback.
      * Applies an exponential curve to the raw linear value for a more natural perceived loudness.
+     * If muted, this updates the stored previousVolume but doesn't change current gain (unless unmuting).
      * @param {number} rawValue - The raw linear volume level (0.0 to 1.0).
      */
     setVolume(rawValue) {
-        if (this.masterGainNode && this.audioContext) {
-            const parsedValue = parseFloat(rawValue);
-            if (isNaN(parsedValue)) {
-                Logger.warn("Invalid volume value received:", rawValue);
-                return;
-            }
-            const clampedValue = Math.max(0, Math.min(1, parsedValue));
-            const exponentialValue = Math.pow(clampedValue, 2);
+        const parsedValue = parseFloat(rawValue);
+        if (isNaN(parsedValue)) {
+            Logger.warn("Invalid volume value received:", rawValue);
+            return;
+        }
+        const clampedValue = Math.max(0, Math.min(1, parsedValue));
 
+        // Update previousVolume so unmuting returns to this new value
+        this.previousVolume = clampedValue;
+
+        if (this.isMuted) {
+             // If muted, we don't update the actual gain node, just the state
+             return;
+        }
+
+        this._applyVolume(clampedValue);
+    }
+
+    /**
+     * Applies volume to the master gain node.
+     * @param {number} linearValue - Linear volume 0-1
+     * @private
+     */
+    _applyVolume(linearValue) {
+        if (this.masterGainNode && this.audioContext) {
+            const exponentialValue = Math.pow(linearValue, 2);
             try {
                 this.masterGainNode.gain.linearRampToValueAtTime(exponentialValue, this.audioContext.currentTime + 0.02);
             } catch (e) {
@@ -433,6 +455,24 @@ export class AudioController {
                 this.masterGainNode.gain.value = exponentialValue;
             }
         }
+    }
+
+    /**
+     * Toggles the mute state of the application.
+     * @returns {boolean} The new mute state (true = muted).
+     */
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+
+        if (this.isMuted) {
+            this._applyVolume(0);
+        } else {
+            this._applyVolume(this.previousVolume);
+        }
+
+        // Dispatch event specifically for mute change if needed, or rely on state queries
+        this._dispatchEvent('mute_changed', null, this.isMuted ? 'Audio muted.' : 'Audio unmuted.');
+        return this.isMuted;
     }
 
     /**
