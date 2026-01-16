@@ -18,6 +18,7 @@ jest.mock('../../audio/AudioController.js', () => {
         isApiSupported: jest.fn().mockReturnValue(true),
         getCurrentSoundInfo: jest.fn().mockReturnValue(null),
         loadConfig: jest.fn().mockResolvedValue(),
+        toggleMute: jest.fn(),
       };
     })
   };
@@ -147,5 +148,44 @@ describe('SoundscapePlayer Component', () => {
     volumeSlider.dispatchEvent(volumeEvent);
 
     expect(mockAudioControllerInstance.setVolume).toHaveBeenCalledWith(0.8);
+  });
+
+  describe('UX Controls (Mute & Help)', () => {
+    test('should call toggleMute when mute button is clicked', () => {
+        const muteButton = soundscapePlayer.shadowRoot.getElementById('mute-button');
+        expect(muteButton).not.toBeNull();
+
+        muteButton.click();
+        expect(mockAudioControllerInstance.toggleMute).toHaveBeenCalled();
+    });
+
+    test('should toggle help modal visibility', () => {
+        const helpModal = soundscapePlayer.shadowRoot.getElementById('help-modal');
+        expect(helpModal).not.toBeNull();
+        expect(helpModal.classList.contains('visible')).toBe(false);
+
+        // 1. Open via keyboard '?'
+        // Note: SoundscapePlayer uses 'keypress' for '?'
+        window.dispatchEvent(new KeyboardEvent('keypress', { key: '?' }));
+        expect(helpModal.classList.contains('visible')).toBe(true);
+
+        // 2. Close via Esc
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(helpModal.classList.contains('visible')).toBe(false);
+
+        // 3. Open via '/'
+        window.dispatchEvent(new KeyboardEvent('keypress', { key: '/' }));
+        expect(helpModal.classList.contains('visible')).toBe(true);
+
+        // 4. Close via 'X' button
+        const closeBtn = helpModal.querySelector('.close-button');
+        closeBtn.click();
+        expect(helpModal.classList.contains('visible')).toBe(false);
+    });
+
+    test('should handle M key for mute', () => {
+         window.dispatchEvent(new KeyboardEvent('keypress', { key: 'm' }));
+         expect(mockAudioControllerInstance.toggleMute).toHaveBeenCalled();
+    });
   });
 });

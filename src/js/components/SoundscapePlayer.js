@@ -8,9 +8,9 @@ export class SoundscapePlayer extends HTMLElement {
     this.attachShadow({ mode: 'open' });
 
     // audioController will be instantiated in connectedCallback
-    // this.audioController = new AudioController(); // Placeholder, actual instantiation later
-    this._currentSoundId = null; // Tracks the soundId that is currently selected (could be playing or paused)
-    this._isSoundPlaying = false; // Tracks if the _currentSoundId is actively playing
+    this._currentSoundId = null;
+    this._isSoundPlaying = false;
+    this._showHelp = false;
 
     const template = document.createElement('template');
     template.innerHTML = `
@@ -19,12 +19,11 @@ export class SoundscapePlayer extends HTMLElement {
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center; /* Center content vertically in case of fixed height */
-          width: 100%; /* Fill the .soundscape-player-container */
-          padding: 20px; /* Generous white space */
-          box-sizing: border-box; /* Include padding in width/height */
-          /* background-color, border-radius, box-shadow, max-width are removed
-             as they are handled by the outer .soundscape-player-container in main.css */
+          justify-content: center;
+          width: 100%;
+          padding: 20px;
+          box-sizing: border-box;
+          position: relative; /* For modal positioning context if needed, though fixed is better for modal */
         }
 
         #controls-area {
@@ -32,7 +31,7 @@ export class SoundscapePlayer extends HTMLElement {
           flex-direction: column;
           align-items: center;
           width: 100%;
-          gap: 20px; /* Default gap between sections */
+          gap: 20px;
         }
 
         /* Sound Buttons Area - Mobile First */
@@ -40,42 +39,151 @@ export class SoundscapePlayer extends HTMLElement {
           display: flex;
           flex-direction: column;
           width: 100%;
-          gap: 16px; /* Space between buttons in a column */
-          margin-bottom: 20px; /* Space before volume slider, PRD US-006 */
+          gap: 16px;
+          margin-bottom: 20px;
         }
 
         /* Volume Slider Area */
         #volume-control-area {
-          width: 100%; /* Full width for mobile */
-          display: flex; /* To center the volume-slider component if it has a max-width itself */
+          width: 100%;
+          display: flex;
+          align-items: center;
           justify-content: center;
-          margin-bottom: 20px; /* Space before status display, PRD US-006 */
+          margin-bottom: 20px;
+          gap: 15px; /* Space between slider and mute button */
         }
 
-        /* Direct styling for volume-slider component for layout purposes */
-        ::slotted(volume-slider), volume-slider { /* Ensure we select the component instance */
-             width: 100%; /* Mobile: Full width */
-             margin-left: 16px; /* PRD: 16px margin on mobile */
-             margin-right: 16px;
-             max-width: calc(100% - 32px); /* ensure margins are effective */
+        /* Direct styling for volume-slider component */
+        ::slotted(volume-slider), volume-slider {
+             flex-grow: 1; /* Let slider take available space */
+             width: auto;
+             max-width: 300px;
         }
 
+        /* Mute Button */
+        #mute-button {
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 8px;
+          color: #2C3E50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          transition: background-color 0.2s;
+        }
+
+        #mute-button:hover {
+          background-color: rgba(0,0,0,0.05);
+        }
+
+        #mute-button:focus {
+          outline: 2px solid #3498db;
+          outline-offset: 2px;
+        }
+
+        #mute-button svg {
+            fill: currentColor;
+            width: 24px;
+            height: 24px;
+        }
 
         /* Playback Status Display */
         #playback-status-display {
           font-size: 14px;
           font-weight: 400;
           letter-spacing: 0.5px;
-          color: #2C3E50; /* Consistent with PRD text color */
-          margin-top: 20px; /* PRD US-006: Spacing */
+          color: #2C3E50;
+          margin-top: 20px;
           text-align: center;
-          min-height: 20px; /* Reserve space to prevent layout shifts */
+          min-height: 20px;
           width: 100%;
         }
 
         .error-message {
-          color: var(--soundscape-error-color, red); /* Keep error color variable or use direct value */
+          color: var(--soundscape-error-color, red);
           font-weight: bold;
+        }
+
+        /* Help Modal */
+        #help-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #help-modal.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #2C3E50;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+            padding: 0 5px;
+        }
+
+        .close-button:hover {
+            color: #2C3E50;
+        }
+
+        .shortcut-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f9f9f9;
+        }
+
+        .shortcut-key {
+            font-family: monospace;
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
         }
 
         /* Tablet Layout (768px - 1199px) */
@@ -84,66 +192,86 @@ export class SoundscapePlayer extends HTMLElement {
             display: grid;
             grid-template-columns: repeat(3, minmax(180px, 1fr));
             gap: 20px;
-            width: 100%; /* Takes full width of host */
-            max-width: 660px; /* Approx 3*200px buttons + 2*30px gaps, adjust as needed */
-            margin-bottom: 30px; /* Increased margin for tablet */
-          }
-
-          ::slotted(volume-slider), volume-slider {
-            width: 300px; /* Fixed width for tablet/desktop */
-            margin-left: auto; /* Centered */
-            margin-right: auto;
-            max-width: 300px;
+            width: 100%;
+            max-width: 660px;
+            margin-bottom: 30px;
           }
 
           #volume-control-area {
-             margin-bottom: 30px; /* Increased margin for tablet */
+             margin-bottom: 30px;
+             max-width: 400px; /* Limit width on larger screens */
           }
-        }
-
-        /* Desktop Layout (1200px+) - Inherits from Tablet, can add overrides */
-        @media (min-width: 1200px) {
-          #sound-selection-area {
-            /* max-width: 700px; /* Slightly wider if design dictates */
-            /* Styles from 768px are largely fine. */
-          }
-          /* volume-slider width from tablet is fine */
         }
       </style>
+
       <div id="controls-area">
         <div id="sound-selection-area">
           <!-- Sound buttons will be populated here -->
         </div>
+
         <div id="volume-control-area">
           <volume-slider min="0" max="1" step="0.01"></volume-slider>
+          <button id="mute-button" aria-label="Mute" title="Mute (M)">
+            <svg viewBox="0 0 24 24">
+               <path d="M7 9v6h4l5 5V4l-5 5H7z" />
+            </svg>
+          </button>
         </div>
       </div>
+
       <div id="playback-status-display" aria-live="polite" role="status">
         Loading soundscape...
+      </div>
+
+      <!-- Help Modal -->
+      <div id="help-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title" class="modal-title">Keyboard Shortcuts</h2>
+                <button id="close-help" class="close-button" aria-label="Close Help">&times;</button>
+            </div>
+            <ul class="shortcut-list">
+                <li class="shortcut-item">
+                    <span>Play/Pause</span>
+                    <span class="shortcut-key">Space</span>
+                </li>
+                <li class="shortcut-item">
+                    <span>Mute/Unmute</span>
+                    <span class="shortcut-key">M</span>
+                </li>
+                <li class="shortcut-item">
+                    <span>Close / Stop</span>
+                    <span class="shortcut-key">Esc</span>
+                </li>
+                <li class="shortcut-item">
+                    <span>Toggle Help</span>
+                    <span class="shortcut-key">?</span>
+                </li>
+            </ul>
+        </div>
       </div>
     `;
     this.shadowRoot.appendChild(template.content.cloneNode(true));
 
     this._soundSelectionArea = this.shadowRoot.getElementById('sound-selection-area');
     this._volumeSlider = this.shadowRoot.querySelector('volume-slider');
+    this._muteButton = this.shadowRoot.getElementById('mute-button');
     this._statusDisplay = this.shadowRoot.getElementById('playback-status-display');
+    this._helpModal = this.shadowRoot.getElementById('help-modal');
+    this._closeHelpBtn = this.shadowRoot.getElementById('close-help');
 
     // Bind methods
     this._handleSoundButtonClicked = this._handleSoundButtonClicked.bind(this);
     this._handleVolumeChanged = this._handleVolumeChanged.bind(this);
-    this._handleAudioStateChange = this._handleAudioStateChange.bind(this); // Renamed from _handleAudioControllerStateChange
+    this._handleAudioStateChange = this._handleAudioStateChange.bind(this);
     this._handleEscKey = this._handleEscKey.bind(this);
+    this._handleMuteToggle = this._handleMuteToggle.bind(this);
+    this._toggleHelp = this._toggleHelp.bind(this);
+    this._handleKeypress = this._handleKeypress.bind(this);
   }
 
-  // Ensure AudioController is imported and available globally or via module system
-  // For now, assuming AudioController is available when this component's connectedCallback runs.
-  // It might be better to pass it as a property if it's managed externally.
   connectedCallback() {
-    // Dynamically import AudioController or ensure it's loaded.
-    // For this example, we assume AudioController is globally available or imported at the top.
     if (typeof AudioController === 'undefined') {
-      // This check might be redundant if AudioController is a hard dependency and would fail earlier.
-      // However, as a safeguard for different loading scenarios:
       this._disableControlsWithMessage('Critical error: Audio system component not found.');
       console.error('AudioController class is not defined. Make sure it is loaded before SoundscapePlayer.');
       return;
@@ -152,13 +280,8 @@ export class SoundscapePlayer extends HTMLElement {
     try {
       this.audioController = new AudioController();
     } catch (e) {
-      // AudioController constructor throws if Web Audio API is not supported.
-      // The AudioController constructor should also dispatch an 'unsupported' event,
-      // which _handleAudioStateChange will pick up.
-      // However, to ensure UI is disabled even if event handling is somehow delayed or missed:
       this._disableControlsWithMessage(e.message || 'Audio playback is not supported by your browser.');
-      // No need to console.error(e) here if AudioController already does it.
-      return; // Stop further initialization if audio controller fails.
+      return;
     }
 
     this._initAudioSystem();
@@ -171,9 +294,8 @@ export class SoundscapePlayer extends HTMLElement {
         this._populateSoundButtons();
         this._setupEventListeners();
         this._loadInitialVolume();
-        this._updateStatus('Soundscape ready. Select a sound to play.');
+        this._updateStatus('Soundscape ready. Select a sound to play or press ? for help.');
 
-        // Preload sounds
         this.audioController.preloadAllSounds().catch(error => {
             this._handleCriticalError(`A critical error occurred while preloading sounds: ${error.message}`);
         });
@@ -183,19 +305,23 @@ export class SoundscapePlayer extends HTMLElement {
   }
 
   disconnectedCallback() {
-    // Remove event listeners to prevent memory leaks
     this._soundSelectionArea.removeEventListener('soundbutton-clicked', this._handleSoundButtonClicked);
     if (this._volumeSlider) {
       this._volumeSlider.removeEventListener('volume-changed', this._handleVolumeChanged);
     }
-    // Remove the correct event listener
+    if (this._muteButton) {
+        this._muteButton.removeEventListener('click', this._handleMuteToggle);
+    }
     document.removeEventListener('audiostatechange', this._handleAudioStateChange);
-    // Remove ESC key listener
     window.removeEventListener('keydown', this._handleEscKey);
+    window.removeEventListener('keypress', this._handleKeypress);
+
+    if (this._closeHelpBtn) {
+        this._closeHelpBtn.removeEventListener('click', this._toggleHelp);
+    }
 
     if (this.audioController) {
-        // Stop any playing sound to prevent it from continuing after the element is removed.
-        this.audioController.pause(); // Using pause which suspends context, effectively stopping sound.
+        this.audioController.pause();
     }
   }
 
@@ -208,6 +334,9 @@ export class SoundscapePlayer extends HTMLElement {
     if (this._volumeSlider) {
         this._volumeSlider.disabled = true;
     }
+    if (this._muteButton) {
+        this._muteButton.disabled = true;
+    }
     console.error(`Critical Error: ${message}`);
 }
 
@@ -217,7 +346,6 @@ export class SoundscapePlayer extends HTMLElement {
         console.error('AudioController or its sounds property is not available.');
         return;
     }
-    // Iterate over Object.values for the sounds object
     Object.values(this.audioController.sounds).forEach(sound => {
       if (!customElements.get('sound-button')) {
         this._updateStatus('Error: SoundButton not found.', true);
@@ -232,57 +360,79 @@ export class SoundscapePlayer extends HTMLElement {
   }
 
   _setupEventListeners() {
-    // Event delegation for sound buttons
     this._soundSelectionArea.addEventListener('soundbutton-clicked', this._handleSoundButtonClicked);
 
     if (this._volumeSlider) {
       this._volumeSlider.addEventListener('volume-changed', this._handleVolumeChanged);
-    } else {
-      this._updateStatus('Error: VolumeSlider not found in template.', true);
-      console.error('VolumeSlider element not found in the shadow DOM.');
     }
 
-    // Listen for custom events from AudioController
-    // This assumes AudioController dispatches events on the document or a global event bus.
-    // If AudioController is more self-contained, it might emit events on itself.
-    // Listen to 'audiostatechange' as specified
+    if (this._muteButton) {
+        this._muteButton.addEventListener('click', this._handleMuteToggle);
+    }
+
+    if (this._closeHelpBtn) {
+        this._closeHelpBtn.addEventListener('click', this._toggleHelp);
+    }
+
     document.addEventListener('audiostatechange', this._handleAudioStateChange);
-    // Add ESC key listener
     window.addEventListener('keydown', this._handleEscKey);
+    window.addEventListener('keypress', this._handleKeypress);
+  }
+
+  _handleKeypress(event) {
+      if (event.key === '?' || event.key === '/') { // ? usually needs Shift+/, so checking / as well for convenience if needed, but ? is key value
+          this._toggleHelp();
+      } else if (event.key.toLowerCase() === 'm') {
+          this._handleMuteToggle();
+      } else if (event.key === ' ') {
+          event.preventDefault(); // Prevent scroll
+          // Space toggles play/pause of current sound if active
+          if (this._currentSoundId) {
+              if (this._isSoundPlaying) {
+                  this.audioController.pause();
+              } else {
+                  this.audioController.play(this._currentSoundId);
+              }
+          }
+      }
+  }
+
+  _toggleHelp() {
+      this._showHelp = !this._showHelp;
+      if (this._showHelp) {
+          this._helpModal.classList.add('visible');
+          this._closeHelpBtn.focus();
+      } else {
+          this._helpModal.classList.remove('visible');
+      }
   }
 
   _loadInitialVolume() {
     const savedVolume = localStorage.getItem(LOCAL_STORAGE_VOLUME_KEY);
-    let initialVolume = 0.5; // Default volume
+    let initialVolume = 0.5;
     if (savedVolume !== null) {
       initialVolume = parseFloat(savedVolume);
     }
     if (this._volumeSlider) {
-      this._volumeSlider.value = initialVolume; // Set on slider component
+      this._volumeSlider.value = initialVolume;
     }
     if (this.audioController) {
-      this.audioController.setVolume(initialVolume); // Set in audio controller
+      this.audioController.setVolume(initialVolume);
     }
-     this._updateAriaForVolume(initialVolume);
+    this._updateMuteIcon();
   }
 
   _saveVolume(volume) {
     localStorage.setItem(LOCAL_STORAGE_VOLUME_KEY, volume.toString());
   }
 
-   _updateAriaForVolume(volume) { // eslint-disable-line no-unused-vars
-    if (this._volumeSlider) {
-      // The VolumeSlider component itself should manage its aria-valuenow and aria-valuetext
-      // This is just ensuring the player's context is aware if needed.
-      // For now, we assume VolumeSlider handles its own ARIA updates internally on value change.
-    }
-  }
-
   _handleEscKey(event) {
     if (event.key === 'Escape') {
+      if (this._showHelp) {
+          this._toggleHelp();
+          return;
+      }
       if (this.audioController && this._isSoundPlaying) {
-        // this._isSoundPlaying is updated by _handleAudioStateChange
-        // which is triggered by events from AudioController, including pause.
         this.audioController.pause();
       }
     }
@@ -297,65 +447,81 @@ export class SoundscapePlayer extends HTMLElement {
     if (soundInfo && soundInfo.id === soundId && soundInfo.isPlaying) {
       this.audioController.pause();
     } else {
-      // If it's a different sound, or the same sound but paused/stopped
       this.audioController.play(soundId);
     }
+  }
+
+  _handleMuteToggle() {
+      if (this.audioController) {
+          this.audioController.toggleMute();
+          // State update happens in _handleAudioStateChange via event
+      }
+  }
+
+  _updateMuteIcon() {
+      const isMuted = this.audioController ? this.audioController.isMuted : false;
+      const volume = this.audioController ? this.audioController.previousVolume : 0.5;
+
+      let pathData = '';
+      if (isMuted || volume === 0) {
+           // Muted icon
+           pathData = "M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z";
+      } else if (volume < 0.5) {
+           // Low volume
+           pathData = "M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z";
+      } else {
+           // High volume
+           pathData = "M3 9v6h4l5 5V4L9 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
+      }
+
+      const svgPath = this._muteButton.querySelector('path');
+      if (svgPath) {
+          svgPath.setAttribute('d', pathData);
+      }
+      this._muteButton.setAttribute('aria-label', isMuted ? "Unmute" : "Mute");
   }
 
   _handleVolumeChanged(event) {
     const { value } = event.detail;
     if (this.audioController) {
       this.audioController.setVolume(value);
+      // If we change volume while muted, we should probably unmute?
+      // Standard UX: Moving slider unmutes.
+      if (this.audioController.isMuted) {
+          this.audioController.toggleMute(); // This will apply the volume we just set
+      }
     }
     this._saveVolume(value);
-    this._updateAriaForVolume(value);
-    // Status update for volume change can be added if desired
-    // this._updateStatus(`Volume set to ${Math.round(value * 100)}%`);
+    this._updateMuteIcon();
   }
 
   _handleAudioStateChange(event) {
     const { status, soundId, message } = event.detail;
 
-    // Always update status message if provided
     if (message) {
         this._updateStatus(message, status === 'error');
     }
 
-    // Centralized state updates based on status
     switch (status) {
-        case 'loading':
-             // If we know which sound is loading, we can set a loading state on it?
-             // But _updateAllButtonStates needs to know about loading.
-             // We can track loading state in a separate map or just rely on AudioController events?
-             // AudioController.loadingStates exists.
-             // But for UI responsiveness, let's trigger a re-render or let the loop handle it.
-             // We'll update the button states.
-             break;
-        case 'loaded':
-             // Sound loaded.
-             break;
         case 'playing':
         case 'resumed':
             this._currentSoundId = soundId;
             this._isSoundPlaying = true;
             break;
         case 'paused':
-            this._currentSoundId = soundId; // Keep sound selected
+            this._currentSoundId = soundId;
             this._isSoundPlaying = false;
             break;
         case 'stopped':
-            // If the stopped sound is the current one, or if it's a global stop
             if (this._currentSoundId === soundId || !soundId) {
                 this._currentSoundId = null;
                 this._isSoundPlaying = false;
             }
             break;
         case 'error':
-            // If the error is for the current sound, update its state
             if (this._currentSoundId === soundId) {
                 this._isSoundPlaying = false;
             }
-            // If it's a global error, reset all
             if (!soundId) {
                 this._currentSoundId = null;
                 this._isSoundPlaying = false;
@@ -363,14 +529,15 @@ export class SoundscapePlayer extends HTMLElement {
             break;
         case 'unsupported':
             this._disableControlsWithMessage(message || 'Audio playback is not supported.');
-            return; // Exit early, no other UI updates needed
+            return;
+        case 'mute_changed':
+            this._updateMuteIcon();
+            break;
     }
 
-    // Update all buttons based on the single source of truth
     this._updateAllButtonStates();
 
-    // Update the main status message if no specific message came with the event
-    if (!message) {
+    if (!message && status !== 'mute_changed') {
         this._updateGeneralStatusMessage();
     }
 }
@@ -414,7 +581,7 @@ _updateGeneralStatusMessage() {
   }
 
   _disableControlsWithMessage(message) {
-    this._updateStatus(message, true); // Show message as an error
+    this._updateStatus(message, true);
 
     const soundButtons = this._soundSelectionArea.querySelectorAll('sound-button');
     soundButtons.forEach(button => {
@@ -423,10 +590,10 @@ _updateGeneralStatusMessage() {
 
     if (this._volumeSlider) {
       this._volumeSlider.disabled = true;
-      // Consider adding a visual disabled style to the volume slider host or input itself
-      // For example: this._volumeSlider.setAttribute('disabled', '');
     }
-    // Further actions like hiding elements could be done here if desired.
+    if (this._muteButton) {
+        this._muteButton.disabled = true;
+    }
     console.warn(`SoundscapePlayer controls disabled: ${message}`);
   }
 }
