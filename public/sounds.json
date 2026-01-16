@@ -1,0 +1,7 @@
+{
+  "rain": { "id": "rain", "name": "Heavy Rain", "filePath": "assets/audio/heavy-rain.mp3", "fallbackPath": "assets/audio/heavy-rain.ogg", "duration": 0, "preload": true },
+  "ocean": { "id": "ocean", "name": "Ocean Waves", "filePath": "assets/audio/ocean-waves.mp3", "fallbackPath": "assets/audio/ocean-waves.ogg", "duration": 0, "preload": true },
+  "wind": { "id": "wind", "name": "Strong Wind", "filePath": "assets/audio/strong-wind.mp3", "fallbackPath": "assets/audio/strong-wind.ogg", "duration": 0, "preload": true },
+  "forest": { "id": "forest", "name": "Forest Ambience", "filePath": "assets/audio/forest-ambience.mp3", "fallbackPath": "assets/audio/forest-ambience.ogg", "duration": 0, "preload": true },
+  "fireplace": { "id": "fireplace", "name": "Crackling Fireplace", "filePath": "assets/audio/fireplace-crackling.mp3", "fallbackPath": "assets/audio/fireplace-crackling.ogg", "duration": 0, "preload": true }
+}

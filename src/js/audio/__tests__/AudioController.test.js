@@ -66,6 +66,11 @@ describe('AudioController', () => {
 
     dispatchEventSpy.mockClear();
     audioController = new AudioController();
+    // Inject test data to match previous hardcoded state
+    audioController.sounds = {
+        rain: { id: 'rain', name: 'Heavy Rain', filePath: 'assets/audio/heavy-rain.mp3', fallbackPath: 'assets/audio/heavy-rain.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null },
+        ocean: { id: 'ocean', name: 'Ocean Waves', filePath: 'assets/audio/ocean-waves.mp3', fallbackPath: 'assets/audio/ocean-waves.ogg', duration: 0, preload: true, audioBuffer: null, sourceNode: null }
+    };
   });
 
   // ... (Previous tests remain mostly the same, focusing on the problem areas)
