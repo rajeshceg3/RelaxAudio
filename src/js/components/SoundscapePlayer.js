@@ -50,7 +50,7 @@ export class SoundscapePlayer extends HTMLElement {
           align-items: center;
           justify-content: center;
           margin-bottom: 20px;
-          gap: 15px; /* Space between slider and mute button */
+          gap: 15px; /* Space between slider and buttons */
         }
 
         /* Direct styling for volume-slider component */
@@ -60,8 +60,8 @@ export class SoundscapePlayer extends HTMLElement {
              max-width: 300px;
         }
 
-        /* Mute Button */
-        #mute-button {
+        /* Control Buttons (Mute, Help) */
+        .control-button {
           background: none;
           border: none;
           cursor: pointer;
@@ -71,19 +71,20 @@ export class SoundscapePlayer extends HTMLElement {
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          transition: background-color 0.2s;
+          transition: background-color 0.2s, color 0.2s;
         }
 
-        #mute-button:hover {
+        .control-button:hover {
           background-color: rgba(0,0,0,0.05);
+          color: #34495e;
         }
 
-        #mute-button:focus {
+        .control-button:focus {
           outline: 2px solid #3498db;
           outline-offset: 2px;
         }
 
-        #mute-button svg {
+        .control-button svg {
             fill: currentColor;
             width: 24px;
             height: 24px;
@@ -99,11 +100,12 @@ export class SoundscapePlayer extends HTMLElement {
           text-align: center;
           min-height: 20px;
           width: 100%;
+          transition: color 0.3s ease;
         }
 
         .error-message {
-          color: var(--soundscape-error-color, red);
-          font-weight: bold;
+          color: #E74C3C !important;
+          font-weight: 600 !important;
         }
 
         /* Help Modal */
@@ -211,16 +213,21 @@ export class SoundscapePlayer extends HTMLElement {
 
         <div id="volume-control-area">
           <volume-slider min="0" max="1" step="0.01"></volume-slider>
-          <button id="mute-button" aria-label="Mute" title="Mute (M)">
+          <button id="mute-button" class="control-button" aria-label="Mute" title="Mute (M)">
             <svg viewBox="0 0 24 24">
                <path d="M7 9v6h4l5 5V4l-5 5H7z" />
+            </svg>
+          </button>
+          <button id="help-button" class="control-button" aria-label="Help" title="Keyboard Shortcuts (?)">
+            <svg viewBox="0 0 24 24">
+               <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/>
             </svg>
           </button>
         </div>
       </div>
 
       <div id="playback-status-display" aria-live="polite" role="status">
-        Loading soundscape...
+        Initializing system...
       </div>
 
       <!-- Help Modal -->
@@ -256,6 +263,7 @@ export class SoundscapePlayer extends HTMLElement {
     this._soundSelectionArea = this.shadowRoot.getElementById('sound-selection-area');
     this._volumeSlider = this.shadowRoot.querySelector('volume-slider');
     this._muteButton = this.shadowRoot.getElementById('mute-button');
+    this._helpButton = this.shadowRoot.getElementById('help-button');
     this._statusDisplay = this.shadowRoot.getElementById('playback-status-display');
     this._helpModal = this.shadowRoot.getElementById('help-modal');
     this._closeHelpBtn = this.shadowRoot.getElementById('close-help');
@@ -312,6 +320,9 @@ export class SoundscapePlayer extends HTMLElement {
     if (this._muteButton) {
         this._muteButton.removeEventListener('click', this._handleMuteToggle);
     }
+    if (this._helpButton) {
+        this._helpButton.removeEventListener('click', this._toggleHelp);
+    }
     document.removeEventListener('audiostatechange', this._handleAudioStateChange);
     window.removeEventListener('keydown', this._handleEscKey);
     window.removeEventListener('keypress', this._handleKeypress);
@@ -336,6 +347,9 @@ export class SoundscapePlayer extends HTMLElement {
     }
     if (this._muteButton) {
         this._muteButton.disabled = true;
+    }
+    if (this._helpButton) {
+        this._helpButton.disabled = true;
     }
     console.error(`Critical Error: ${message}`);
 }
@@ -368,6 +382,10 @@ export class SoundscapePlayer extends HTMLElement {
 
     if (this._muteButton) {
         this._muteButton.addEventListener('click', this._handleMuteToggle);
+    }
+
+    if (this._helpButton) {
+        this._helpButton.addEventListener('click', this._toggleHelp);
     }
 
     if (this._closeHelpBtn) {
