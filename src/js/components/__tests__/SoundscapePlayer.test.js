@@ -187,5 +187,18 @@ describe('SoundscapePlayer Component', () => {
          window.dispatchEvent(new KeyboardEvent('keypress', { key: 'm' }));
          expect(mockAudioControllerInstance.toggleMute).toHaveBeenCalled();
     });
+
+    test('should toggle help modal visibility via button', () => {
+        const helpButton = soundscapePlayer.shadowRoot.getElementById('help-button');
+        const helpModal = soundscapePlayer.shadowRoot.getElementById('help-modal');
+        expect(helpButton).not.toBeNull();
+        expect(helpModal.classList.contains('visible')).toBe(false);
+
+        helpButton.click();
+        expect(helpModal.classList.contains('visible')).toBe(true);
+
+        helpButton.click();
+        expect(helpModal.classList.contains('visible')).toBe(false);
+    });
   });
 });

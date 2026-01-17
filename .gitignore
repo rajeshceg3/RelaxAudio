@@ -28,6 +28,7 @@ jspm_packages/
 
 # Vite
 /dist
+dev-dist/
 
 # Coverage directory used by tools like istanbul
 coverage/
