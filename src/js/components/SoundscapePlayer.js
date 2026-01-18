@@ -276,6 +276,8 @@ export class SoundscapePlayer extends HTMLElement {
     this._handleMuteToggle = this._handleMuteToggle.bind(this);
     this._toggleHelp = this._toggleHelp.bind(this);
     this._handleKeypress = this._handleKeypress.bind(this);
+    this._trapFocus = this._trapFocus.bind(this);
+    this._lastFocusedElement = null;
   }
 
   connectedCallback() {
@@ -330,6 +332,8 @@ export class SoundscapePlayer extends HTMLElement {
     if (this._closeHelpBtn) {
         this._closeHelpBtn.removeEventListener('click', this._toggleHelp);
     }
+
+    this._helpModal.removeEventListener('keydown', this._trapFocus);
 
     if (this.audioController) {
         this.audioController.pause();
@@ -417,11 +421,58 @@ export class SoundscapePlayer extends HTMLElement {
 
   _toggleHelp() {
       this._showHelp = !this._showHelp;
+
       if (this._showHelp) {
+          // Capture current focus before opening modal
+          this._lastFocusedElement = this.shadowRoot.activeElement;
+
           this._helpModal.classList.add('visible');
           this._closeHelpBtn.focus();
+
+          // Add focus trap listener
+          this._helpModal.addEventListener('keydown', this._trapFocus);
       } else {
           this._helpModal.classList.remove('visible');
+
+          // Remove focus trap listener
+          this._helpModal.removeEventListener('keydown', this._trapFocus);
+
+          // Restore focus
+          if (this._lastFocusedElement) {
+              this._lastFocusedElement.focus();
+          } else if (this._helpButton) {
+              this._helpButton.focus();
+          }
+      }
+  }
+
+  _trapFocus(e) {
+      if (e.key !== 'Tab') return;
+
+      const focusableElementsString = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]';
+      const focusableElements = Array.from(this._helpModal.querySelectorAll(focusableElementsString));
+
+      if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+      }
+
+      const firstTabStop = focusableElements[0];
+      const lastTabStop = focusableElements[focusableElements.length - 1];
+
+      // Shift + Tab
+      if (e.shiftKey) {
+          if (this.shadowRoot.activeElement === firstTabStop) {
+              e.preventDefault();
+              lastTabStop.focus();
+          }
+      }
+      // Tab
+      else {
+          if (this.shadowRoot.activeElement === lastTabStop) {
+              e.preventDefault();
+              firstTabStop.focus();
+          }
       }
   }
 
