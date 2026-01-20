@@ -15,6 +15,7 @@ export class VolumeSlider extends HTMLElement {
         :host {
           display: block; /* Changed from inline-block */
           width: 100%; /* Host takes full width from parent layout */
+          position: relative; /* For tooltip positioning */
         }
         input[type="range"] {
           width: 100%; /* Input fills the host */
@@ -104,17 +105,57 @@ export class VolumeSlider extends HTMLElement {
             box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.4); /* May need different styling or might not be fully supported */
         }
 
+        /* Tooltip Styles */
+        #tooltip {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2C3E50;
+            color: #FAFAFA;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: system-ui, -apple-system, sans-serif;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        #tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -4px;
+            border-width: 4px;
+            border-style: solid;
+            border-color: #2C3E50 transparent transparent transparent;
+        }
+
+        :host(:hover) #tooltip,
+        :host(:focus-within) #tooltip,
+        input[type="range"]:active + #tooltip {
+            opacity: 1;
+        }
+
         /* Reduced Motion */
         @media (prefers-reduced-motion: reduce) {
-          input[type="range"] {
+          input[type="range"], #tooltip {
             transition: none !important;
           }
         }
       </style>
       <input type="range" aria-label="Volume control">
+      <div id="tooltip" aria-hidden="true"></div>
     `;
     this.shadowRoot.appendChild(template.content.cloneNode(true));
     this._input = this.shadowRoot.querySelector('input[type="range"]');
+    this._tooltip = this.shadowRoot.getElementById('tooltip');
   }
 
   static get observedAttributes() {
@@ -178,15 +219,14 @@ export class VolumeSlider extends HTMLElement {
       this._input.setAttribute('aria-valuemax', '100');
       this._input.setAttribute('aria-valuenow', percentValue.toString());
       this._input.setAttribute('aria-valuetext', `${percentValue}%`);
+      if(this._tooltip) this._tooltip.textContent = `${percentValue}%`;
     } else {
       // For other ranges, use the direct values
       this._input.setAttribute('aria-valuemin', this._min.toString());
       this._input.setAttribute('aria-valuemax', this._max.toString());
       this._input.setAttribute('aria-valuenow', this._value.toString());
-      // For non-percentage ranges, valuetext might be redundant if value is simple,
-      // or could be formatted more explicitly e.g. "Level X of Y"
-      // For now, just the value if not the default 0-1 range.
       this._input.setAttribute('aria-valuetext', this._value.toString());
+      if(this._tooltip) this._tooltip.textContent = this._value.toString();
     }
   }
 
