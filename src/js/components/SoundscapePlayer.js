@@ -36,10 +36,10 @@ export class SoundscapePlayer extends HTMLElement {
 
         /* Sound Buttons Area - Mobile First */
         #sound-selection-area {
-          display: flex;
-          flex-direction: column;
-          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
           gap: 16px;
+          width: 100%;
           margin-bottom: 20px;
         }
 
@@ -277,6 +277,7 @@ export class SoundscapePlayer extends HTMLElement {
     this._toggleHelp = this._toggleHelp.bind(this);
     this._handleKeypress = this._handleKeypress.bind(this);
     this._trapFocus = this._trapFocus.bind(this);
+    this._handleBackdropClick = this._handleBackdropClick.bind(this);
     this._lastFocusedElement = null;
   }
 
@@ -431,11 +432,13 @@ export class SoundscapePlayer extends HTMLElement {
 
           // Add focus trap listener
           this._helpModal.addEventListener('keydown', this._trapFocus);
+          this._helpModal.addEventListener('click', this._handleBackdropClick);
       } else {
           this._helpModal.classList.remove('visible');
 
           // Remove focus trap listener
           this._helpModal.removeEventListener('keydown', this._trapFocus);
+          this._helpModal.removeEventListener('click', this._handleBackdropClick);
 
           // Restore focus
           if (this._lastFocusedElement) {
@@ -443,6 +446,12 @@ export class SoundscapePlayer extends HTMLElement {
           } else if (this._helpButton) {
               this._helpButton.focus();
           }
+      }
+  }
+
+  _handleBackdropClick(e) {
+      if (e.target === this._helpModal) {
+          this._toggleHelp();
       }
   }
 
@@ -459,17 +468,18 @@ export class SoundscapePlayer extends HTMLElement {
 
       const firstTabStop = focusableElements[0];
       const lastTabStop = focusableElements[focusableElements.length - 1];
+      const currentActive = this.shadowRoot.activeElement;
 
       // Shift + Tab
       if (e.shiftKey) {
-          if (this.shadowRoot.activeElement === firstTabStop) {
+          if (currentActive === firstTabStop) {
               e.preventDefault();
               lastTabStop.focus();
           }
       }
       // Tab
       else {
-          if (this.shadowRoot.activeElement === lastTabStop) {
+          if (currentActive === lastTabStop) {
               e.preventDefault();
               firstTabStop.focus();
           }
