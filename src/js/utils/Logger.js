@@ -2,6 +2,7 @@
  * Tactical Logger Utility
  * Handles application logging with strict environment discipline.
  * Output is suppressed in production to prevent intel leaks.
+ * Verified: 2025-10-27
  */
 export class Logger {
   static log(...args) {

@@ -27,7 +27,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,mp3,ogg,json}'],
         runtimeCaching: [
           {
-            urlPattern: ({ request }) => request.destination === 'audio',
+            urlPattern: ({ request, url }) => request.destination === 'audio' || /\.(mp3|ogg)$/i.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'audio-cache',
