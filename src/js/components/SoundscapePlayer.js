@@ -1,4 +1,5 @@
 import { AudioController } from '../audio/AudioController.js';
+import { Logger } from '../utils/Logger.js';
 
 const LOCAL_STORAGE_VOLUME_KEY = 'soundscapePlayerVolume';
 
@@ -284,7 +285,7 @@ export class SoundscapePlayer extends HTMLElement {
   connectedCallback() {
     if (typeof AudioController === 'undefined') {
       this._disableControlsWithMessage('Critical error: Audio system component not found.');
-      console.error('AudioController class is not defined. Make sure it is loaded before SoundscapePlayer.');
+      Logger.error('AudioController class is not defined. Make sure it is loaded before SoundscapePlayer.');
       return;
     }
 
@@ -356,19 +357,19 @@ export class SoundscapePlayer extends HTMLElement {
     if (this._helpButton) {
         this._helpButton.disabled = true;
     }
-    console.error(`Critical Error: ${message}`);
+    Logger.error(`Critical Error: ${message}`);
 }
 
   _populateSoundButtons() {
     if (!this.audioController || !this.audioController.sounds) {
         this._updateStatus('Error: Sounds data not available from AudioController.', true);
-        console.error('AudioController or its sounds property is not available.');
+        Logger.error('AudioController or its sounds property is not available.');
         return;
     }
     Object.values(this.audioController.sounds).forEach(sound => {
       if (!customElements.get('sound-button')) {
         this._updateStatus('Error: SoundButton not found.', true);
-        console.error('SoundButton is not defined. Make sure it is loaded before SoundscapePlayer.');
+        Logger.error('SoundButton is not defined. Make sure it is loaded before SoundscapePlayer.');
         return;
       }
       const button = document.createElement('sound-button');
@@ -673,6 +674,6 @@ _updateGeneralStatusMessage() {
     if (this._muteButton) {
         this._muteButton.disabled = true;
     }
-    console.warn(`SoundscapePlayer controls disabled: ${message}`);
+    Logger.warn(`SoundscapePlayer controls disabled: ${message}`);
   }
 }
