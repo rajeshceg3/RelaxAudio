@@ -200,5 +200,37 @@ describe('SoundscapePlayer Component', () => {
         helpButton.click();
         expect(helpModal.classList.contains('visible')).toBe(false);
     });
+
+    test('should trap focus inside help modal', () => {
+        // Open modal
+        const helpButton = soundscapePlayer.shadowRoot.getElementById('help-button');
+        helpButton.click();
+
+        const helpModal = soundscapePlayer.shadowRoot.getElementById('help-modal');
+        const closeButton = helpModal.querySelector('.close-button');
+
+        // Mock the event
+        const event = new KeyboardEvent('keydown', {
+            key: 'Tab',
+            bubbles: true,
+            cancelable: true
+        });
+
+        // Spy on preventDefault
+        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+        // Spy on focus (though JSDOM handles it, we want to ensure it's called)
+        const focusSpy = jest.spyOn(closeButton, 'focus');
+
+        // Mock activeElement to simulate being on the last (and only) element
+        // Note: checking shadowRoot.activeElement in JSDOM usually works if we focus it first
+        closeButton.focus();
+
+        helpModal.dispatchEvent(event);
+
+        // Expect preventDefault to be called (stopping escape)
+        // and focus to be re-applied to the first element (which is also the close button)
+        expect(preventDefaultSpy).toHaveBeenCalled();
+        expect(focusSpy).toHaveBeenCalled();
+    });
   });
 });
