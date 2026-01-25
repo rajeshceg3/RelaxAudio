@@ -449,6 +449,10 @@ export class AudioController {
         if (this.masterGainNode && this.audioContext) {
             const exponentialValue = Math.pow(linearValue, 2);
             try {
+                // Cancel scheduled values to avoid glitches
+                this.masterGainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+                // Ramp needs a starting point anchor to prevent popping
+                this.masterGainNode.gain.setValueAtTime(this.masterGainNode.gain.value, this.audioContext.currentTime);
                 this.masterGainNode.gain.linearRampToValueAtTime(exponentialValue, this.audioContext.currentTime + 0.1);
             } catch (e) {
                 Logger.warn("linearRampToValueAtTime failed, setting value directly:", e);
