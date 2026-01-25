@@ -8,6 +8,8 @@ const mockAudioContext = {
     gain: {
       value: 1,
       linearRampToValueAtTime: jest.fn(),
+      cancelScheduledValues: jest.fn(),
+      setValueAtTime: jest.fn(),
     },
   }),
   createBufferSource: jest.fn().mockReturnValue({

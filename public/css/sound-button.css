@@ -46,9 +46,10 @@ button:focus-visible {
 
 :host([loading]) button {
   cursor: wait;
-  opacity: 0.7;
+  opacity: 0.8;
   position: relative;
-  /* Text remains visible but dimmed */
+  padding-right: 48px; /* Reserve tactical space for spinner */
+  transition: padding-right 0.2s ease-in-out;
 }
 
 :host([loading]) button::after {
@@ -57,13 +58,13 @@ button:focus-visible {
   width: 20px;
   height: 20px;
   top: 50%;
-  left: 50%;
-  margin-top: -12px;
-  margin-left: -12px;
-  border: 3px solid #2C3E50;
+  left: auto;
+  right: 16px; /* Tactical flank position */
+  margin-top: -10px;
+  border: 2px solid #2C3E50;
   border-top-color: transparent;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
