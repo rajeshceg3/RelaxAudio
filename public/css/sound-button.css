@@ -46,9 +46,9 @@ button:focus-visible {
 
 :host([loading]) button {
   cursor: wait;
-  opacity: 0.8;
+  opacity: 0.7;
   position: relative;
-  color: transparent;
+  /* Text remains visible but dimmed */
 }
 
 :host([loading]) button::after {
